@@ -173,8 +173,6 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
     <div class="field">
       <span class="lab">Keep Spotify awake</span>
       <div class="row"><button class="chip" id="kaBtn" aria-pressed="false">Off</button><span class="small" id="kaTrack"></span></div>
-      <div class="row"><button class="btn" id="kaFind">Choose silent track</button></div>
-      <div class="results" id="kaResults"></div>
       <p class="small">Phones put Spotify to sleep a few minutes after the music stops, and then it drops off the list. With this on, Spotify plays a silent track on repeat between goals so it stays awake. Each press then loads the song fresh, which is a little slower than a <strong>Ready</strong> button, but it won't find Spotify asleep.</p>
     </div>
     <div class="field">
@@ -366,7 +364,7 @@ async function loadDevices(){
     if(d){
       const vol=(current||fading)&&device?device.vol:d.volume_percent; // don't pick up a volume we lowered ourselves while fading
       device={id:d.id,name:d.name,type:d.type,vol:vol,canVol:!!d.supports_volume}; store.set('device',device);
-      setStatus('ok','Ready · '+d.name+(d.is_active?'':' (idle)')+(ka.on&&ka.uri?' · kept awake':''));
+      setStatus('ok','Ready · '+d.name+(d.is_active?'':' (idle)')+(ka.on?' · kept awake':''));
       $('statusWake').hidden=d.is_active;
       schedulePoll(20000);
     } else {
@@ -396,39 +394,36 @@ function drawDevices(){
 }
 
 /* ---------- keep Spotify awake with a silent track ---------- */
-let ka=store.get('ka',{on:false,uri:'',name:''});
+const SILENT='Silence 10 Minutes'; // the one silent track this app always uses
+let ka=store.get('ka',{on:true,uri:'',name:''});
+if(!/^silence 10 minutes/i.test(ka.name||'')){ ka.uri=''; ka.name=''; store.set('ka',ka); }
+let resolving=null;
+function resolveSilent(){ // find "Silence 10 Minutes" on Spotify once, then remember it
+  if(ka.uri) return Promise.resolve(true);
+  if(!resolving) resolving=(async()=>{
+    try{
+      const r=await api('GET','/search?type=track&limit=10&q='+encodeURIComponent('"'+SILENT+'"'));
+      const items=(r.ok&&r.json&&r.json.tracks&&r.json.tracks.items)||[];
+      const norm=x=>x.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(), want=norm(SILENT);
+      const t=items.find(t=>norm(t.name)===want&&t.duration_ms>=540000&&t.duration_ms<=660000)||items.find(t=>norm(t.name)===want)||items.find(t=>norm(t.name).startsWith(want));
+      if(t){ ka.uri=t.uri; ka.name=t.name; store.set('ka',ka); }
+    }catch(e){}
+    resolving=null; drawKa(); return !!ka.uri;
+  })();
+  return resolving;
+}
 async function idle(){ // what Spotify does between goals
-  if(!(ka.on&&ka.uri)) return false;
+  if(!ka.on) return false;
+  if(!ka.uri&&!(await resolveSilent())) return false;
   const r=await api('PUT','/me/player/play'+devQ(),{uris:[ka.uri]}).catch(()=>null);
   if(r&&r.ok){ api('PUT','/me/player/repeat?state=track'+(device&&device.id?'&device_id='+encodeURIComponent(device.id):'')).catch(()=>{}); return true; }
   return false;
 }
 function drawKa(){
   $('kaBtn').setAttribute('aria-pressed',!!ka.on); $('kaBtn').textContent=ka.on?'On':'Off';
-  $('kaTrack').textContent=ka.uri?'Silent track: '+ka.name:'No silent track chosen yet';
+  $('kaTrack').textContent=ka.uri?'Plays “'+ka.name+'” between goals':(resolving?'Looking up “'+SILENT+'”…':'Could not find “'+SILENT+'” on Spotify yet');
 }
-async function findSilent(){
-  const w=$('kaResults'); w.innerHTML='<p class="small">Searching…</p>';
-  const r=await api('GET','/search?type=track&limit=10&q='+encodeURIComponent('silence silent track')).catch(()=>null);
-  w.innerHTML='';
-  const items=((r&&r.ok&&r.json&&r.json.tracks&&r.json.tracks.items)||[]).filter(t=>t.duration_ms>=60000);
-  if(!items.length){ w.innerHTML='<p class="small">No silent tracks found. Try again later.</p>'; return; }
-  items.forEach(t=>{
-    const b=document.createElement('button'); b.className='res';
-    const tx=document.createElement('span'); tx.className='rt';
-    const bn=document.createElement('b'); bn.textContent=t.name;
-    const sp=document.createElement('span'); sp.textContent=(t.artists||[]).map(a=>a.name).join(', ');
-    tx.append(bn,sp);
-    const d=document.createElement('span'); d.className='rd'; d.textContent=fmtShort(t.duration_ms);
-    b.append(tx,d);
-    b.onclick=async()=>{ ka={on:true,uri:t.uri,name:t.name+' ('+fmtShort(t.duration_ms)+')'}; store.set('ka',ka); w.innerHTML=''; drawKa(); cue=null; drawGrid();
-      if(!current&&await idle()) toast('Spotify is now playing silence between goals. Listen on the speaker to check it is really silent.','info'); };
-    w.appendChild(b);
-  });
-}
-$('kaFind').addEventListener('click',findSilent);
 $('kaBtn').addEventListener('click',async()=>{
-  if(!ka.uri){ findSilent(); return; }
   ka.on=!ka.on; store.set('ka',ka); drawKa(); cue=null; drawGrid();
   if(ka.on){ if(!current) idle(); }
   else if(!current) api('PUT','/me/player/pause'+devQ()).catch(()=>{});
@@ -479,7 +474,7 @@ async function endClipInner(c,my){
   }
   if(my!==gen) return;
   current=null; drawPlaying();
-  if(!(ka.on&&ka.uri)) recue(c,my);
+  if(!ka.on) recue(c,my);
 }
 async function recue(c,my){ // put the song back at its start point, paused, so the next press of this button is a quick resume
   try{ const r=await api('PUT','/me/player/seek?position_ms='+Math.round(c.start)+(device&&device.id?'&device_id='+encodeURIComponent(device.id):'')); if(r.ok&&my===gen){ cue={uri:c.uri,pos:c.start}; drawGrid(); } }catch(e){}
@@ -490,7 +485,7 @@ async function stopNow(){
   current=null; drawPlaying();
   try{ if(!(await idle())){ const r=await api('PUT','/me/player/pause'+devQ()); if(!r.ok&&r.status!==403) toast(explain(r)); } }catch(e){ toast('No connection to Spotify.'); }
   if(device&&device.canVol&&typeof device.vol==='number') api('PUT','/me/player/volume?volume_percent='+device.vol+(device.id?'&device_id='+encodeURIComponent(device.id):'')).catch(()=>{});
-  if(was&&!(ka.on&&ka.uri)) recue(was,my);
+  if(was&&!ka.on) recue(was,my);
 }
 $('stopBtn').addEventListener('click',stopNow);
 
@@ -548,7 +543,7 @@ $('wakeBtn').addEventListener('click',async()=>{
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&wantLock&&!lock) getLock(); });
 
 /* ---------- settings ---------- */
-$('setBtn').addEventListener('click',()=>{ drawKa(); $('kaResults').innerHTML=''; $('backup').value=JSON.stringify(clips); drawDevices(); $('setScrim').hidden=false; loadDevices(); });
+$('setBtn').addEventListener('click',()=>{ drawKa(); if(!ka.uri) resolveSilent(); $('backup').value=JSON.stringify(clips); drawDevices(); $('setScrim').hidden=false; loadDevices(); });
 $('setClose').addEventListener('click',()=>$('setScrim').hidden=true);
 $('setScrim').addEventListener('click',e=>{ if(e.target===$('setScrim')) $('setScrim').hidden=true; });
 $('devRefresh').addEventListener('click',loadDevices);
@@ -558,7 +553,7 @@ $('devWake').addEventListener('click',async()=>{
   if(r.ok){ toast('Spotify is now set to play on '+device.name+'.','info'); setTimeout(loadDevices,800); } else toast(explain(r));
 });
 $('cueFirst').addEventListener('click',async()=>{
-  if(ka.on&&ka.uri) return toast('Not needed while Keep Spotify awake is on.','info');
+  if(ka.on) return toast('Not needed while Keep Spotify awake is on.','info');
   const c=clips[0]; if(!c) return toast('Add a song first.');
   const my=++gen;
   const r=await api('PUT','/me/player/play'+devQ(),{uris:[c.uri],position_ms:Math.round(c.start)}).catch(()=>({ok:false,status:0}));
@@ -708,7 +703,7 @@ async function seedPresets(){
 function showView(){
   const logged=!!tok;
   $('setup').hidden=logged; $('main').hidden=!logged; $('hdrBtns').hidden=!logged; $('bar').hidden=!logged;
-  if(logged){ drawGrid(); loadDevices(); if(!clips.length&&!store.get('seeded',false)) seedPresets(); }
+  if(logged){ drawGrid(); loadDevices(); resolveSilent(); if(!clips.length&&!store.get('seeded',false)) seedPresets(); }
   else { $('redir').textContent=REDIRECT; $('cid').value=clientId; }
 }
 $('loginBtn').addEventListener('click',login);
