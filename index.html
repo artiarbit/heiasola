@@ -110,7 +110,13 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;fl
 .toast.info{background:#15262A;border-color:#245058;color:#CDEFF3}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 16px;display:flex;flex-direction:column;gap:14px}
 .card h2,.sheet h2{margin:0;font-family:var(--display);font-size:24px;text-transform:uppercase;letter-spacing:.04em}
-.card ol{margin:0;padding-left:20px;line-height:1.55;color:var(--muted)}
+.card ol{margin:0;padding-left:20px;line-height:1.55;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.choice-head{display:flex;align-items:center;gap:10px}
+.choice-num{width:32px;height:32px;border-radius:50%;background:var(--led);color:var(--ink);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:18px;flex:none}
+#chJoin{border-color:var(--led)}
+.card ol .btn{color:var(--text)}
+#ownApp summary::-webkit-details-marker{display:none}
+#ownApp[open] summary{display:none}
 .card ol strong{color:var(--text)}
 code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:2px 6px;overflow-wrap:anywhere}
 .scrim{position:fixed;inset:0;background:rgba(4,6,8,.72);display:flex;align-items:flex-end;justify-content:center;z-index:20}
@@ -169,25 +175,40 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
   </header>
 
   <!-- first-time setup -->
-  <section class="card" id="setup" hidden>
-    <h2>Connect Spotify</h2>
-    <p class="small" style="font-size:15px">Log in with your Spotify Premium account. Ørjan must first add your Spotify email to the app, otherwise Spotify will refuse the login.</p>
-    <button class="btn primary big" id="loginDefault">Log in with Spotify</button>
-    <details id="ownApp">
-    <summary class="small" style="cursor:pointer">Use your own Spotify developer app instead</summary>
-    <ol style="margin-top:10px">
-      <li>Go to <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> and log in with your Spotify Premium account.</li>
-      <li>Press <strong>Create app</strong>. Any name works. Tick <strong>Web API</strong>.</li>
-      <li>Under <strong>Redirect URIs</strong>, add exactly this address:<br><span class="mono" id="redir"></span> <button class="btn" id="copyRedir" style="margin-top:6px;padding:4px 10px">Copy</button></li>
-      <li>Save, then copy the app's <strong>Client ID</strong> and paste it here.</li>
-    </ol>
-    <div class="field">
-      <label for="cid">Client ID</label>
-      <input class="txt" id="cid" autocomplete="off" spellcheck="false" placeholder="32 letters and numbers">
+  <section id="setup" hidden style="display:flex;flex-direction:column;gap:14px">
+    <p class="small" style="font-size:15px;color:var(--text)">HEIA SOLA! controls Spotify on your phone. You need Spotify Premium. Choose how to connect:</p>
+
+    <div class="card choice" id="chJoin">
+      <div class="choice-head"><span class="choice-num">A</span><h2>Join Ørjan's app</h2></div>
+      <p class="small">Quickest. Ørjan adds your Spotify account to his app, then you log in. His app has room for 5 people.</p>
+      <ol>
+        <li>Send Ørjan your name and the <strong>email of your Spotify account</strong> (Spotify → Profile → Account).<br>
+          <button class="btn" id="copyRequest" style="margin-top:6px;padding:6px 12px">Copy a message to Ørjan</button></li>
+        <li>When he says you're added, press the button below.</li>
+      </ol>
+      <button class="btn primary big" id="loginDefault">Log in with Spotify</button>
     </div>
-    <button class="btn big" id="loginBtn">Log in with my own app</button>
-    </details>
-    <p class="small" id="setupErr"></p>
+
+    <div class="card choice" id="chOwn">
+      <div class="choice-head"><span class="choice-num">B</span><h2>Set up your own app</h2></div>
+      <p class="small">About 5 minutes, no waiting for anyone. You get the same buttons, and you can add up to 5 others to your app yourself.</p>
+      <details id="ownApp">
+        <summary class="btn big" style="list-style:none;text-align:center">Show the steps</summary>
+        <ol style="margin-top:12px">
+          <li>Go to <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> and log in with your Spotify Premium account. Accept the terms if asked.</li>
+          <li>Press <strong>Create app</strong>. Any name and description work, e.g. "Heia Sola". Tick <strong>Web API</strong>.</li>
+          <li>Under <strong>Redirect URIs</strong>, add exactly this address and press <strong>Add</strong>:<br><span class="mono" id="redir"></span> <button class="btn" id="copyRedir" style="margin-top:6px;padding:4px 10px">Copy</button></li>
+          <li>Press <strong>Save</strong>. Open the app's <strong>Settings</strong>, copy the <strong>Client ID</strong> and paste it here.</li>
+        </ol>
+        <div class="field" style="margin-top:12px">
+          <label for="cid">Client ID</label>
+          <input class="txt" id="cid" autocomplete="off" spellcheck="false" placeholder="32 letters and numbers">
+        </div>
+        <button class="btn primary big" id="loginBtn" style="margin-top:12px;width:100%">Log in with my own app</button>
+        <p class="small" style="margin-top:10px">To let others use your app: dashboard → your app → <strong>User Management</strong> → add their name and Spotify email.</p>
+      </details>
+    </div>
+    <p class="small" id="setupErr" style="color:#FF9A9D"></p>
   </section>
 
   <!-- main -->
@@ -212,6 +233,7 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
     <h2 id="setTitle">Settings</h2>
     <div class="field">
       <span class="lab">Spotify status</span>
+      <p class="small" id="whichApp"></p>
       <div class="status" id="status"><span class="led"></span><span class="stxt" id="statusTxt">Checking Spotify…</span><button class="btn" id="statusWake" hidden style="padding:6px 12px">Wake</button></div>
       <p class="small" id="latency"></p>
     </div>
@@ -238,7 +260,7 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
       <p class="small">Replaces all buttons on this phone with the club's songs and timings.</p>
     </div>
     <div class="sheet-actions">
-      <button class="btn danger" id="logout">Log out of Spotify</button>
+      <button class="btn danger" id="logout">Log out / switch app</button>
       <button class="btn primary" id="setClose">Done</button>
     </div>
   </div>
@@ -389,12 +411,14 @@ async function api(method,path,body){
   let j=null; if(r.status!==204){ j=await r.json().catch(()=>null); }
   return {ok:r.ok,status:r.status,json:j};
 }
-const NOT_REGISTERED='Spotify does not allow this account in the app yet. Ørjan must add the email of this Spotify account under User Management in the Spotify dashboard. Then open ⚙︎, log out and log in again.';
+function notRegistered(){ return clientId===DEFAULT_CLIENT_ID
+  ?'Spotify does not allow this account in Ørjan\'s app yet. Ørjan must add the email of this Spotify account under User Management. Then open ⚙︎, log out and log in again.'
+  :'Spotify does not allow this account in your app. In the Spotify dashboard, open your app → User Management and add this account\'s email. Then open ⚙︎, log out and log in again.'; }
 function explain(res){
   const reason=res&&res.json&&res.json.error&&(res.json.error.reason||res.json.error.message)||'';
   if(res.status===404) return 'Spotify can\'t find the playing device. Open Spotify on it, play any song for a second, then try again.';
   if(res.status===403&&/PREMIUM/i.test(reason)) return 'Spotify needs a Premium account for remote control.';
-  if(res.status===403&&/regist|dashboard/i.test(reason)) return NOT_REGISTERED;
+  if(res.status===403&&/regist|dashboard/i.test(reason)) return notRegistered();
   if(res.status===403) return 'Spotify refused this ('+reason+'). If the device is an iPhone, volume changes are not allowed.';
   if(res.status===429) return 'Too many requests to Spotify. Wait a few seconds.';
   return 'Spotify error '+res.status+(reason?': '+reason:'');
@@ -418,7 +442,7 @@ async function loadDevices(){
     showLatency(performance.now()-t0,'check');
     if(r.status===403){ // not a hiccup: the account isn't allowed in the app (or isn't Premium), so say so plainly and don't keep retrying fast
       const reason=(r.json&&r.json.error&&(r.json.error.reason||r.json.error.message))||'';
-      setStatus('bad',/PREMIUM/i.test(reason)?'This Spotify account needs Premium for remote control.':NOT_REGISTERED);
+      setStatus('bad',/PREMIUM/i.test(reason)?'This Spotify account needs Premium for remote control.':notRegistered());
       toast($('statusTxt').textContent); schedulePoll(30000); return;
     }
     if(!r.ok){ softFail(r.status===429?'Spotify says slow down. Wait a few seconds.':'Could not reach Spotify ('+r.status+')'); return; }
@@ -656,7 +680,7 @@ $('wakeBtn').addEventListener('click',async()=>{
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&wantLock&&!lock) getLock(); });
 
 /* ---------- settings ---------- */
-$('setBtn').addEventListener('click',()=>{ drawKa(); if(!ka.uri) resolveSilent(); $('backup').value=JSON.stringify(clips); drawDevices(); $('setScrim').hidden=false; loadDevices(); });
+$('setBtn').addEventListener('click',()=>{ $('whichApp').textContent=clientId===DEFAULT_CLIENT_ID?'Connected through Ørjan\'s app.':'Connected through your own Spotify app.'; drawKa(); if(!ka.uri) resolveSilent(); $('backup').value=JSON.stringify(clips); drawDevices(); $('setScrim').hidden=false; loadDevices(); });
 $('setClose').addEventListener('click',()=>$('setScrim').hidden=true);
 $('setScrim').addEventListener('click',e=>{ if(e.target===$('setScrim')) $('setScrim').hidden=true; });
 $('devRefresh').addEventListener('click',loadDevices);
@@ -878,6 +902,11 @@ function showView(){
 }
 $('loginBtn').addEventListener('click',()=>login(false));
 $('loginDefault').addEventListener('click',()=>login(true));
+$('copyRequest').addEventListener('click',async()=>{
+  const msg='Hi Ørjan! Can you add me to the HEIA SOLA! app?\nName: \nSpotify email: ';
+  try{ await navigator.clipboard.writeText(msg); toast('Copied. Paste it into a message to Ørjan and fill in your name and Spotify email.','info'); }
+  catch(e){ toast('Send Ørjan your name and the email of your Spotify account.','info'); }
+});
 $('copyRedir').addEventListener('click',async()=>{ try{ await navigator.clipboard.writeText(REDIRECT); toast('Copied.','info'); }catch(e){} });
 (async function(){ await handleRedirect(); showView(); })();
 })();
