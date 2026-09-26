@@ -214,23 +214,27 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
       <div class="swatches" id="edColors" role="radiogroup" aria-label="Colour"></div>
     </div>
     <div class="field" id="edStartBox">
-      <label for="edPos">Where the clip starts</label>
+      <label for="edPos">Clip starts at</label>
       <div class="range-row"><input type="range" id="edPos" min="0" max="240" step="0.1" value="0"></div>
       <div class="row"><span class="startval" id="edStart">0:00.0</span><span class="small" id="edLen"></span></div>
       <div class="row">
         <button class="btn" data-n="-1">−1 s</button><button class="btn" data-n="-0.1">−0.1</button>
         <button class="btn" data-n="0.1">+0.1</button><button class="btn" data-n="1">+1 s</button>
       </div>
-      <p class="small">Easiest way: press <strong>Play song</strong>, then press <strong>Start here</strong> when the good part comes.</p>
+      <label for="edEndPos" style="margin-top:10px">Clip ends at</label>
+      <div class="range-row"><input type="range" id="edEndPos" min="0" max="240" step="0.1" value="6"></div>
+      <div class="row"><span class="startval" id="edEnd">0:06.0</span><span class="small" id="edClipLen"></span></div>
+      <div class="row">
+        <button class="btn" data-e="-1">−1 s</button><button class="btn" data-e="-0.1">−0.1</button>
+        <button class="btn" data-e="0.1">+0.1</button><button class="btn" data-e="1">+1 s</button>
+      </div>
+      <p class="small">Easiest way: press <strong>Play song</strong>, press <strong>Start here</strong> when the good part comes, and <strong>End here</strong> where it should stop.</p>
       <div class="row">
         <button class="btn big" id="edListen">▶ Play song</button>
         <button class="btn big primary" id="edMark">Start here</button>
+        <button class="btn big primary" id="edMarkEnd">End here</button>
         <button class="btn big" id="edPauseListen">❚❚ Pause</button>
       </div>
-    </div>
-    <div class="field">
-      <label for="edDur">Clip length</label>
-      <div class="range-row"><input type="range" id="edDur" min="2" max="20" step="0.5" value="6"><output id="edDurO">6 s</output></div>
     </div>
     <div class="field">
       <label for="edFade">Fade out at the end</label>
@@ -498,7 +502,7 @@ function drawGrid(){
     const num=document.createElement('span'); num.className='num'; num.textContent=i<9?String(i+1):'';
     if(cue&&cue.uri===c.uri&&cue.pos===c.start&&!editMode){ const q=document.createElement('span'); q.className='cued'; q.textContent='● Ready'; num.appendChild(q); }
     const nm=document.createElement('span'); nm.className='name'; nm.textContent=c.name||'Untitled';
-    const meta=document.createElement('span'); meta.className='meta'; meta.textContent=c.uri?((c.trackName||'')+' · from '+fmtShort(c.start)+' · '+c.dur+' s'):(c.trackName||'No song yet – tap Edit');
+    const meta=document.createElement('span'); meta.className='meta'; meta.textContent=c.uri?((c.trackName||'')+' · '+fmtShort(c.start)+'–'+fmtShort(c.start+c.dur*1000)):(c.trackName||'No song yet – tap Edit');
     const prog=document.createElement('span'); prog.className='prog';
     b.append(num,nm,meta,prog);
     if(editMode){ const t=document.createElement('span'); t.className='edit-tag'; t.textContent='Edit'; b.appendChild(t); }
@@ -575,7 +579,7 @@ function openEditor(c){
   edOpen=true;
   ed={isNew:!c, clip:c?Object.assign({},c):{id:'c'+Date.now().toString(36),name:'',color:COLORS[clips.length%COLORS.length],uri:'',trackName:'',artist:'',art:'',trackDur:0,start:0,dur:6,fade:2}};
   $('edTitle').textContent=c?'Edit button':'New button';
-  $('edName').value=ed.clip.name; $('edDur').value=ed.clip.dur; $('edFade').value=ed.clip.fade;
+  $('edName').value=ed.clip.name; $('edFade').value=ed.clip.fade;
   $('edSearch').value=''; $('edResults').innerHTML='';
   $('delWrap').innerHTML=''; if(c) addDelBtn();
   $('fadeNote').hidden=!!(device&&device.canVol);
@@ -593,16 +597,31 @@ function syncEditor(){
   $('edChosen').hidden=!has; $('edFind').hidden=has;
   if(has){ $('edTrack').textContent=c.trackName; $('edArtist').textContent=c.artist+' · '+fmtShort(c.trackDur); $('edArt').src=c.art||''; }
   $('edStartBox').style.opacity=has?1:.4;
-  ['edListen','edMark','edPauseListen','edPreview','edPos'].forEach(id=>$(id).disabled=!has);
-  document.querySelectorAll('#edStartBox [data-n]').forEach(b=>b.disabled=!has);
-  $('edPos').max=Math.max(1,(c.trackDur||1000)/1000-1); $('edPos').value=c.start/1000;
-  $('edStart').textContent=fmt(c.start); $('edLen').textContent=has?'of '+fmtShort(c.trackDur):'';
-  $('edDurO').textContent=c.dur+' s'; $('edFadeO').textContent=c.fade+' s';
+  ['edListen','edMark','edMarkEnd','edPauseListen','edPreview','edPos','edEndPos'].forEach(id=>$(id).disabled=!has);
+  document.querySelectorAll('#edStartBox [data-n],#edStartBox [data-e]').forEach(b=>b.disabled=!has);
+  const T=Math.max(1,(c.trackDur||1000)/1000), end=c.start+c.dur*1000;
+  $('edPos').max=Math.max(1,T-1); $('edPos').value=c.start/1000;
+  $('edEndPos').max=T; $('edEndPos').value=end/1000;
+  $('edStart').textContent=fmt(c.start); $('edLen').textContent=has?'song is '+fmtShort(c.trackDur)+' long':'';
+  $('edEnd').textContent=fmt(end); $('edClipLen').textContent='clip is '+(+c.dur).toFixed(1).replace(/\.0$/,'')+' s';
+  $('edFadeO').textContent=c.fade+' s';
 }
-function setStart(ms){ const c=ed.clip; c.start=Math.max(0,Math.min((c.trackDur||0)-1000,Math.round(ms/100)*100)); syncEditor(); }
+const MAXCLIP=60000;
+function setStart(ms){ // moving the start keeps the end where it was, unless that would make the clip too short or too long
+  const c=ed.clip, end=c.start+c.dur*1000, T=c.trackDur||0;
+  c.start=Math.max(0,Math.min(T-1000,Math.round(ms/100)*100));
+  let e=end; if(e<c.start+1000||e>c.start+MAXCLIP) e=Math.min(T,c.start+6000);
+  c.dur=Math.max(1,Math.round((e-c.start)/100)/10); syncEditor();
+}
+function setEnd(ms){
+  const c=ed.clip, T=c.trackDur||0;
+  const e=Math.max(c.start+1000,Math.min(T,c.start+MAXCLIP,Math.round(ms/100)*100));
+  c.dur=Math.round((e-c.start)/100)/10; syncEditor();
+}
 $('edPos').addEventListener('input',e=>setStart(e.target.value*1000));
 document.querySelectorAll('#edStartBox [data-n]').forEach(b=>b.addEventListener('click',()=>setStart(ed.clip.start+b.dataset.n*1000)));
-$('edDur').addEventListener('input',e=>{ ed.clip.dur=+e.target.value; syncEditor(); });
+$('edEndPos').addEventListener('input',e=>setEnd(e.target.value*1000));
+document.querySelectorAll('#edStartBox [data-e]').forEach(b=>b.addEventListener('click',()=>setEnd(ed.clip.start+ed.clip.dur*1000+b.dataset.e*1000)));
 $('edFade').addEventListener('input',e=>{ ed.clip.fade=+e.target.value; syncEditor(); });
 $('edName').addEventListener('input',e=>{ ed.clip.name=e.target.value; });
 $('edChange').addEventListener('click',()=>{ ed.clip.uri=''; syncEditor(); $('edSearch').focus(); });
@@ -649,14 +668,20 @@ $('edListen').addEventListener('click',async()=>{
   if(!r.ok) toast(explain(r));
 });
 $('edPauseListen').addEventListener('click',()=>{ ++gen; clearTimeout(stopT); api('PUT','/me/player/pause'+devQ()).catch(()=>{}); });
-$('edMark').addEventListener('click',async()=>{
+async function playingPos(){
   const t0=performance.now();
   const r=await api('GET','/me/player/currently-playing').catch(()=>null);
-  if(!r||!r.ok||!r.json||!r.json.item){ toast('Nothing is playing. Press Play song first.'); return; }
-  if(r.json.item.uri!==ed.clip.uri){ toast('Spotify is playing a different song. Press Play song first.'); return; }
+  if(!r||!r.ok||!r.json||!r.json.item){ toast('Nothing is playing. Press Play song first.'); return null; }
+  if(r.json.item.uri!==ed.clip.uri){ toast('Spotify is playing a different song. Press Play song first.'); return null; }
   // Spotify reports the position at its timestamp; add the time the request took so the mark matches the moment of the tap
   let pos=r.json.progress_ms; if(r.json.is_playing) pos+=Math.round((performance.now()-t0)/2);
-  setStart(pos);
+  return pos;
+}
+$('edMark').addEventListener('click',async()=>{ const p=await playingPos(); if(p!==null&&ed) setStart(p); });
+$('edMarkEnd').addEventListener('click',async()=>{
+  const p=await playingPos(); if(p===null||!ed) return;
+  if(p<=ed.clip.start+1000){ toast('That is before the start point. Set the start first, or pick a later spot.'); return; }
+  setEnd(p);
 });
 $('edPreview').addEventListener('click',()=>{ const c=Object.assign({},ed.clip,{id:'__preview'}); playClip(c); });
 
