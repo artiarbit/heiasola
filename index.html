@@ -389,10 +389,12 @@ async function api(method,path,body){
   let j=null; if(r.status!==204){ j=await r.json().catch(()=>null); }
   return {ok:r.ok,status:r.status,json:j};
 }
+const NOT_REGISTERED='Spotify does not allow this account in the app yet. Ørjan must add the email of this Spotify account under User Management in the Spotify dashboard. Then open ⚙︎, log out and log in again.';
 function explain(res){
   const reason=res&&res.json&&res.json.error&&(res.json.error.reason||res.json.error.message)||'';
   if(res.status===404) return 'Spotify can\'t find the playing device. Open Spotify on it, play any song for a second, then try again.';
   if(res.status===403&&/PREMIUM/i.test(reason)) return 'Spotify needs a Premium account for remote control.';
+  if(res.status===403&&/regist|dashboard/i.test(reason)) return NOT_REGISTERED;
   if(res.status===403) return 'Spotify refused this ('+reason+'). If the device is an iPhone, volume changes are not allowed.';
   if(res.status===429) return 'Too many requests to Spotify. Wait a few seconds.';
   return 'Spotify error '+res.status+(reason?': '+reason:'');
@@ -414,6 +416,11 @@ async function loadDevices(){
     const t0=performance.now();
     const r=await api('GET','/me/player/devices');
     showLatency(performance.now()-t0,'check');
+    if(r.status===403){ // not a hiccup: the account isn't allowed in the app (or isn't Premium), so say so plainly and don't keep retrying fast
+      const reason=(r.json&&r.json.error&&(r.json.error.reason||r.json.error.message))||'';
+      setStatus('bad',/PREMIUM/i.test(reason)?'This Spotify account needs Premium for remote control.':NOT_REGISTERED);
+      toast($('statusTxt').textContent); schedulePoll(30000); return;
+    }
     if(!r.ok){ softFail(r.status===429?'Spotify says slow down. Wait a few seconds.':'Could not reach Spotify ('+r.status+')'); return; }
     fails=0;
     devices=(r.json&&r.json.devices)||[];
