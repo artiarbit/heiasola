@@ -38,7 +38,9 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;fl
 .brandrow .brand{white-space:nowrap;font-size:clamp(30px,9.5vw,40px);min-width:0}
 .rnd{flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:92px;background:var(--led);color:var(--ink);border:0;border-radius:18px;padding:10px 16px 8px;font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:.08em;text-transform:uppercase;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2),0 6px 16px rgba(0,0,0,.5);transition:transform .08s}
 .rnd.playing{background:var(--ink);color:var(--led);box-shadow:inset 0 0 0 3px var(--led),0 0 22px color-mix(in srgb,var(--led),transparent 50%)}
-.rnd.playing #rndLbl{text-transform:none;font-size:20px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.rnd{min-height:74px;justify-content:center}
+.rnd.playing svg{display:none}
+.rnd.playing #rndLbl{text-transform:none;font-size:34px;line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums}
 .rnd:active{transform:translateY(2px) scale(.96)}
 .rnd.spin svg{animation:spin .5s ease-out}
 @keyframes spin{from{transform:rotate(-180deg) scale(.7)}to{transform:none}}
