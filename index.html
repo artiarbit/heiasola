@@ -34,13 +34,34 @@ a{color:var(--led)}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .brand{font-family:var(--display);font-weight:800;font-size:40px;line-height:1;letter-spacing:.03em;color:var(--led);font-style:italic;text-transform:uppercase;display:flex;align-items:center;gap:10px}
 .stripe{height:12px;border-radius:3px;background:repeating-linear-gradient(-45deg,var(--led) 0 14px,var(--ink) 14px 28px);box-shadow:inset 0 0 0 1px var(--led)}
-.hdr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px}
+.hdr{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;max-width:100%}
+.chip.spot{min-width:0;overflow:hidden}
+#spotTxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#setBtn,#wakeBtn{font-size:16px;padding:5px 11px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 10px;font-weight:600;font-size:13px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}
 .chip[aria-pressed="true"]{background:var(--led);color:var(--ink);border-color:var(--led)}
 .status{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14px;flex-wrap:wrap}
 .status .led{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
 .status.ok .led{background:var(--ok);box-shadow:0 0 8px var(--ok)}
 .status.bad .led{background:var(--stop);box-shadow:0 0 8px var(--stop)}
+.chip.spot .led{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
+.chip.spot.ok .led{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.chip.spot.bad{border-color:#7A2A2E}.chip.spot.bad .led{background:var(--stop);box-shadow:0 0 8px var(--stop)}
+.chip.spot.warn .led{background:var(--led);box-shadow:0 0 8px var(--led)}
+.specials{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.specials:empty{display:none}
+.pad.special{min-height:92px;background:var(--ink);color:var(--led);padding:12px 12px 14px 26px;gap:6px;justify-content:center;box-shadow:inset 0 0 0 2px var(--led),0 8px 20px rgba(0,0,0,.5)}
+.pad.special::after{left:0;top:0;bottom:0;right:auto;width:13px;height:auto;border-radius:0;background:repeating-linear-gradient(-45deg,var(--led) 0 7px,var(--ink) 7px 14px)}
+.pad.special .name{flex:0 0 auto;font-size:22px;font-style:italic;line-height:1}
+.pad.special .top{justify-content:space-between}
+.pad.special .tag{white-space:nowrap;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.pad .secs{flex:none}
+.pad.special .secs{background:var(--led);color:var(--ink)}
+.pad.special .tn{color:var(--muted)}
+.pad.special .edit-tag{border-color:var(--led)}
+.pad.special.playing{background:var(--led);color:var(--ink);box-shadow:inset 0 0 0 3px var(--ink),0 0 26px color-mix(in srgb,var(--led),transparent 45%)}
+.pad.special.playing .secs{background:var(--ink);color:var(--led)}
+.pad.special.playing .prog{background:var(--ink)}
 .status.warn .led{background:var(--led);box-shadow:0 0 8px var(--led)}
 .status .stxt{flex:1;min-width:160px}
 .status .ms{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}
@@ -130,8 +151,9 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
   <header>
     <div class="brand">HEIA SOLA!</div>
     <div class="hdr" id="hdrBtns" hidden>
-      <button class="chip" id="wakeBtn" aria-pressed="false">Screen on</button>
-      <button class="chip" id="setBtn">Settings</button>
+      <button class="chip spot" id="spotChip" title="Spotify status – tap for details"><span class="led"></span><span id="spotTxt">Checking Spotify…</span></button>
+      <button class="chip" id="wakeBtn" aria-pressed="false" aria-label="Keep screen on" title="Keep screen on">☀︎</button>
+      <button class="chip" id="setBtn" aria-label="Settings" title="Settings">⚙︎</button>
       <button class="chip" id="editBtn" aria-pressed="false">Edit</button>
     </div>
   </header>
@@ -155,8 +177,7 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
 
   <!-- main -->
   <div id="main" hidden style="display:flex;flex-direction:column;gap:14px">
-    <div class="status" id="status"><span class="led"></span><span class="stxt" id="statusTxt">Checking Spotify…</span><button class="btn" id="statusWake" hidden style="padding:6px 12px">Wake</button><span class="ms" id="latency"></span></div>
-    <p class="hint" id="hint"></p>
+    <div class="specials" id="specials"></div>
     <div class="grid" id="grid"></div>
   </div>
 </div>
@@ -174,6 +195,11 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
 <div class="scrim" id="setScrim" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <h2 id="setTitle">Settings</h2>
+    <div class="field">
+      <span class="lab">Spotify status</span>
+      <div class="status" id="status"><span class="led"></span><span class="stxt" id="statusTxt">Checking Spotify…</span><button class="btn" id="statusWake" hidden style="padding:6px 12px">Wake</button></div>
+      <p class="small" id="latency"></p>
+    </div>
     <div class="field">
       <span class="lab">Play on</span>
       <div class="devs" id="devs"></div>
@@ -389,7 +415,13 @@ async function loadDevices(){
     drawDevices();
   }catch(e){ softFail('No internet connection to Spotify'); }
 }
-function setStatus(kind,txt){ $('status').className='status '+kind; $('statusTxt').textContent=txt; if(kind!=='ok') $('statusWake').hidden=true; }
+function setStatus(kind,txt){
+  $('status').className='status '+kind; $('statusTxt').textContent=txt; if(kind!=='ok') $('statusWake').hidden=true;
+  $('spotChip').className='chip spot '+kind;
+  $('spotTxt').textContent=kind==='ok'?'Spotify connected':(/^Checking/.test(txt)?'Checking Spotify…':'Spotify not connected');
+  $('spotChip').title=txt;
+}
+$('spotChip').addEventListener('click',()=>$('setBtn').click());
 function showLatency(ms,what){ $('latency').textContent=(what==='play'?'Last press: ':'Spotify responds in ')+Math.round(ms)+' ms'; }
 window.addEventListener('online',()=>{ if(tok) loadDevices(); });
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&tok) loadDevices(); });
@@ -507,7 +539,9 @@ $('stopBtn').addEventListener('click',stopNow);
 let editMode=false;
 function el(tag,cls,txt){ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; }
 const secsTxt=d=>String(Math.round(d*10)/10);
-function setSecs(node,d){ node.textContent=''; node.appendChild(el('b',null,secsTxt(d))); node.appendChild(document.createTextNode('s')); }
+function setSecs(node,d){ node.textContent='';
+  if(d>=60){ const t=Math.round(d); node.appendChild(el('b',null,Math.floor(t/60)+':'+String(t%60).padStart(2,'0'))); }
+  else { node.appendChild(el('b',null,secsTxt(d))); node.appendChild(document.createTextNode('s')); } }
 setInterval(()=>{ // count the seconds down on the button that is playing
   document.querySelectorAll('.pad[data-id] .secs').forEach(n=>{
     const id=n.closest('.pad').dataset.id;
@@ -515,9 +549,22 @@ setInterval(()=>{ // count the seconds down on the button that is playing
     else if(n.dataset.show){ delete n.dataset.show; setSecs(n,+n.dataset.dur); }
   });
 },200);
+function drawSpecial(c){
+  const b=document.createElement('button'); b.className='pad special'; b.dataset.id=c.id;
+  const top=el('span','top');
+  top.appendChild(editMode?el('span','edit-tag','✎ Edit'):el('span','tag','Heia Sola!'));
+  const secs=el('span','secs'); secs.dataset.dur=c.dur; setSecs(secs,c.dur); top.appendChild(secs);
+  b.append(el('span','name',c.name),top);
+  if(!c.uri){ const f=el('span','foot'); f.appendChild(el('span','tn',c.trackName||'No song yet – tap Edit')); b.appendChild(f); }
+  b.appendChild(el('span','prog'));
+  b.addEventListener('click',()=>{ if(editMode) openEditor(c); else playClip(c); });
+  return b;
+}
 function drawGrid(){
   const grid=$('grid'); grid.innerHTML='';
-  clips.forEach((c,i)=>{
+  const sp=$('specials'); sp.innerHTML='';
+  clips.filter(c=>c.special).forEach(c=>sp.appendChild(drawSpecial(c)));
+  clips.filter(c=>!c.special).forEach((c,i)=>{
     const b=document.createElement('button'); b.className='pad'; b.dataset.id=c.id; b.style.setProperty('--c',c.color);
     const top=el('span','top');
     top.appendChild(el('span','num',i<9?String(i+1):'•'));
@@ -535,14 +582,11 @@ function drawGrid(){
     b.addEventListener('click',()=>{ if(editMode) openEditor(c); else playClip(c); });
     grid.appendChild(b);
   });
-  if(editMode||!clips.length){
+  if(editMode||!clips.some(c=>!c.special)){
     const a=document.createElement('button'); a.className='pad add';
     const nm=document.createElement('span'); nm.className='name'; nm.textContent='+ Add song';
     a.appendChild(nm); a.addEventListener('click',()=>openEditor(null)); grid.appendChild(a);
   }
-  $('hint').innerHTML=editMode?'Tap a button to change its song, start point or length. Tap <strong>Done</strong> when finished.'
-    :clips.length?(ka.on?'Tap a button to play its clip. The number shows how many seconds it lasts.':'Tap a button to play its clip. The button marked <strong>Ready</strong> starts fastest, because its song is already loaded.')
-    :'Add your first song. Search Spotify by name, then choose where the clip should start.';
   drawPlaying();
 }
 function drawPlaying(){
@@ -558,7 +602,7 @@ $('editBtn').addEventListener('click',()=>{ editMode=!editMode; $('editBtn').set
 document.addEventListener('keydown',e=>{
   if(edOpen||!$('setScrim').hidden||/INPUT|TEXTAREA/.test(e.target.tagName)) return;
   if(e.key==='Escape'||e.key===' '){ e.preventDefault(); stopNow(); return; }
-  const n=parseInt(e.key,10); if(n>=1&&n<=9&&clips[n-1]&&!editMode) playClip(clips[n-1]);
+  const n=parseInt(e.key,10), reg=clips.filter(c=>!c.special); if(n>=1&&n<=9&&reg[n-1]&&!editMode) playClip(reg[n-1]);
 });
 
 /* ---------- wake lock ---------- */
@@ -584,7 +628,7 @@ $('devWake').addEventListener('click',async()=>{
 });
 $('cueFirst').addEventListener('click',async()=>{
   if(ka.on) return toast('Not needed while Keep Spotify awake is on.','info');
-  const c=clips[0]; if(!c) return toast('Add a song first.');
+  const c=clips.find(x=>!x.special); if(!c) return toast('Add a song first.');
   const my=++gen;
   const r=await api('PUT','/me/player/play'+devQ(),{uris:[c.uri],position_ms:Math.round(c.start)}).catch(()=>({ok:false,status:0}));
   if(!r.ok) return toast(explain(r));
@@ -632,7 +676,7 @@ function syncEditor(){
   $('edEnd').textContent=fmt(end); $('edClipLen').textContent='clip is '+(+c.dur).toFixed(1).replace(/\.0$/,'')+' s';
   $('edFadeO').textContent=c.fade+' s';
 }
-const MAXCLIP=60000;
+const MAXCLIP=600000;
 function setStart(ms){ // moving the start keeps the end where it was, unless that would make the clip too short or too long
   const c=ed.clip, end=c.start+c.dur*1000, T=c.trackDur||0;
   c.start=Math.max(0,Math.min(T-1000,Math.round(ms/100)*100));
@@ -750,11 +794,41 @@ async function seedPresets(){
   }
 }
 
+/* ---------- specialty buttons: Ørjan's own Heia Sola! tracks ---------- */
+const SPECIALS=[
+  {id:'s0',name:'Me ska vinna!',q:'Me ska vinna',title:'me ska vinna'},
+  {id:'s1',name:'Me har vunne!',q:'Me har vunne',title:'me har vunne'}
+];
+async function ensureSpecials(){
+  if(store.get('specials',false)) return; // added once; if one is deleted later it stays deleted
+  store.set('specials',true);
+  const add=SPECIALS.filter(sp=>!clips.some(c=>c.id===sp.id)).map(sp=>({id:sp.id,special:true,name:sp.name,color:'#FFD400',uri:'',trackName:'Finding song on Spotify…',artist:'',art:'',trackDur:0,start:0,dur:6,fade:2}));
+  clips=add.concat(clips); saveClips(); drawGrid();
+  const norm=x=>(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ø/g,'o').replace(/[^a-z0-9]+/g,' ').trim();
+  for(const sp of SPECIALS){
+    const c=clips.find(x=>x.id===sp.id); if(!c||c.uri) continue;
+    try{
+      let items=[];
+      for(const q of [sp.q+' Heia Sola',sp.q]){ // try with the album/artist name first, then the title alone
+        const r=await api('GET','/search?type=track&limit=10&q='+encodeURIComponent(q));
+        items=(r.ok&&r.json&&r.json.tracks&&r.json.tracks.items)||[];
+        if(items.some(t=>norm(t.name).startsWith(sp.title))) break;
+      }
+      const titled=items.filter(t=>norm(t.name).startsWith(sp.title));
+      const mine=t=>(t.artists||[]).some(a=>/orjan|heia sola/.test(norm(a.name)))||/heia sola/.test(norm(t.album&&t.album.name));
+      const t=titled.find(mine)||titled[0];
+      if(t){ c.uri=t.uri; c.trackName=t.name; c.artist=(t.artists||[]).map(a=>a.name).join(', '); c.trackDur=t.duration_ms; c.dur=Math.round(t.duration_ms/100)/10; const imgs=(t.album&&t.album.images)||[]; c.art=(imgs[imgs.length-1]||imgs[0]||{}).url||''; }
+      else c.trackName='Not found – tap Edit to search';
+    }catch(e){ c.trackName='Not found – tap Edit to search'; }
+    saveClips(); drawGrid();
+  }
+}
+
 /* ---------- boot ---------- */
 function showView(){
   const logged=!!tok;
   $('setup').hidden=logged; $('main').hidden=!logged; $('hdrBtns').hidden=!logged; $('bar').hidden=!logged;
-  if(logged){ drawGrid(); loadDevices(); resolveSilent(); if(!clips.length&&!store.get('seeded',false)) seedPresets(); }
+  if(logged){ drawGrid(); loadDevices(); resolveSilent(); (async()=>{ if(!clips.length&&!store.get('seeded',false)) await seedPresets(); await ensureSpecials(); })(); }
   else { $('redir').textContent=REDIRECT; $('cid').value=clientId; }
 }
 $('loginBtn').addEventListener('click',login);
