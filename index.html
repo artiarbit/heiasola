@@ -212,11 +212,6 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
       <p class="small">Phones put Spotify to sleep a few minutes after the music stops, and then it drops off the list. With this on, Spotify plays a silent track on repeat between goals so it stays awake. Each press then loads the song fresh, which is a little slower than a <strong>Ready</strong> button, but it won't find Spotify asleep.</p>
     </div>
     <div class="field">
-      <span class="lab">Warm up</span>
-      <div class="row"><button class="btn" id="cueFirst">Get button 1 ready</button></div>
-      <p class="small">Loads button 1's song at its start point and pauses it, so the first press is as quick as possible. You may hear a tiny blip.</p>
-    </div>
-    <div class="field">
       <label for="backup">Backup of your buttons</label>
       <textarea class="txt" id="backup" spellcheck="false"></textarea>
       <div class="row"><button class="btn" id="copyBackup">Copy</button><button class="btn" id="loadBackup">Load from text above</button></div>
@@ -625,15 +620,6 @@ $('devWake').addEventListener('click',async()=>{
   if(!device) return toast('Pick a device first.');
   const r=await api('PUT','/me/player',{device_ids:[device.id],play:false}).catch(()=>({ok:false,status:0}));
   if(r.ok){ toast('Spotify is now set to play on '+device.name+'.','info'); setTimeout(loadDevices,800); } else toast(explain(r));
-});
-$('cueFirst').addEventListener('click',async()=>{
-  if(ka.on) return toast('Not needed while Keep Spotify awake is on.','info');
-  const c=clips.find(x=>!x.special); if(!c) return toast('Add a song first.');
-  const my=++gen;
-  const r=await api('PUT','/me/player/play'+devQ(),{uris:[c.uri],position_ms:Math.round(c.start)}).catch(()=>({ok:false,status:0}));
-  if(!r.ok) return toast(explain(r));
-  await api('PUT','/me/player/pause'+devQ()).catch(()=>{});
-  await recue(c,my); toast('Button 1 is ready.','info');
 });
 $('copyBackup').addEventListener('click',async()=>{ try{ await navigator.clipboard.writeText($('backup').value); toast('Copied.','info'); }catch(e){ $('backup').select(); } });
 $('loadBackup').addEventListener('click',()=>{
