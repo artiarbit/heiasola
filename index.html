@@ -147,6 +147,9 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
 .range-row{display:flex;align-items:center;gap:12px}
 .range-row input{flex:1;accent-color:var(--led)}
 .range-row output{min-width:52px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.rndopt{display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer}
+.rndopt input{width:22px;height:22px;accent-color:var(--led)}
+.pad .norand{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(10,10,10,.85);color:var(--c);border-radius:6px;padding:2px 6px}
 .small{font-size:13px;color:var(--muted);line-height:1.45;margin:0}
 .sheet-actions{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:14px}
 .sheet-actions .right{display:flex;gap:8px}
@@ -313,6 +316,10 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
       <label for="edFade">Fade out at the end</label>
       <div class="range-row"><input type="range" id="edFade" min="0" max="6" step="0.5" value="2"><output id="edFadeO">2 s</output></div>
       <p class="small" id="fadeNote">Fading only works on devices that let Spotify change their volume. iPhones don't, so there the clip just stops.</p>
+    </div>
+    <div class="field" id="edRndField">
+      <span class="lab">Random button</span>
+      <label class="rndopt" for="edRnd"><input type="checkbox" id="edRnd" checked> Include this song when pressing Random</label>
     </div>
     <button class="btn big" id="edPreview">▶ Preview clip</button>
     <div class="sheet-actions">
@@ -630,7 +637,7 @@ function drawGrid(){
     if(c.art){ const im=document.createElement('img'); im.className='art'; im.src=c.art; im.alt=''; im.onerror=()=>im.remove(); foot.appendChild(im); }
     const info=el('span','info');
     info.appendChild(el('span','tn',c.uri?(c.artist||c.trackName||''):(c.trackName||'No song yet – tap Edit')));
-    if(c.uri) info.appendChild(el('span','rng',fmtShort(c.start)+' – '+fmtShort(c.start+c.dur*1000)));
+    if(c.uri) info.appendChild(el('span','rng',fmtShort(c.start)+' – '+fmtShort(c.start+c.dur*1000)+(c.noRandom?' · not in Random':'')));
     foot.appendChild(info);
     b.append(top,nm,foot,el('span','prog'));
     b.addEventListener('click',()=>{ if(editMode) openEditor(c); else playClip(c); });
@@ -654,8 +661,8 @@ function drawPlaying(){
 }
 let lastRandom=null;
 $('rndBtn').addEventListener('click',()=>{ // a random numbered button, never the same one twice in a row
-  const pool=clips.filter(c=>!c.special&&c.uri);
-  if(!pool.length) return toast('Add a song first.');
+  const pool=clips.filter(c=>!c.special&&c.uri&&!c.noRandom);
+  if(!pool.length) return toast('No songs are included in Random. Turn it on for a song under Edit.');
   const pick=pool.length>1?pool.filter(c=>c.id!==lastRandom):pool;
   const c=pick[Math.floor(Math.random()*pick.length)]; lastRandom=c.id;
   const b=$('rndBtn'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
@@ -712,7 +719,7 @@ function openEditor(c){
   edOpen=true;
   ed={isNew:!c, clip:c?Object.assign({},c):{id:'c'+Date.now().toString(36),name:'',color:COLORS[clips.length%COLORS.length],uri:'',trackName:'',artist:'',art:'',trackDur:0,start:0,dur:6,fade:2}};
   $('edTitle').textContent=c?'Edit button':'New button';
-  $('edName').value=ed.clip.name; $('edFade').value=ed.clip.fade;
+  $('edName').value=ed.clip.name; $('edFade').value=ed.clip.fade; $('edRnd').checked=!ed.clip.noRandom; $('edRndField').hidden=!!ed.clip.special;
   $('edSearch').value=''; $('edResults').innerHTML='';
   $('delWrap').innerHTML=''; if(c) addDelBtn();
   $('fadeNote').hidden=!!(device&&device.canVol);
@@ -756,6 +763,7 @@ document.querySelectorAll('#edStartBox [data-n]').forEach(b=>b.addEventListener(
 $('edEndPos').addEventListener('input',e=>setEnd(e.target.value*1000));
 document.querySelectorAll('#edStartBox [data-e]').forEach(b=>b.addEventListener('click',()=>setEnd(ed.clip.start+ed.clip.dur*1000+b.dataset.e*1000)));
 $('edFade').addEventListener('input',e=>{ ed.clip.fade=+e.target.value; syncEditor(); });
+$('edRnd').addEventListener('change',e=>{ if(e.target.checked) delete ed.clip.noRandom; else ed.clip.noRandom=true; });
 $('edName').addEventListener('input',e=>{ ed.clip.name=e.target.value; });
 $('edChange').addEventListener('click',()=>{ ed.clip.uri=''; syncEditor(); $('edSearch').focus(); });
 
