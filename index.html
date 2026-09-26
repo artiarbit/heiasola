@@ -34,6 +34,13 @@ a{color:var(--led)}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .brand{font-family:var(--display);font-weight:800;font-size:40px;line-height:1;letter-spacing:.03em;color:var(--led);font-style:italic;text-transform:uppercase;display:flex;align-items:center;gap:10px}
 .stripe{height:12px;border-radius:3px;background:repeating-linear-gradient(-45deg,var(--led) 0 14px,var(--ink) 14px 28px);box-shadow:inset 0 0 0 1px var(--led)}
+.brandrow{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
+.brandrow .brand{white-space:nowrap;font-size:clamp(30px,9.5vw,40px);min-width:0}
+.rnd{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--led);color:var(--ink);border:0;border-radius:16px;padding:8px 12px 6px;font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2),0 6px 16px rgba(0,0,0,.5);transition:transform .08s}
+.rnd:active{transform:translateY(2px) scale(.96)}
+.rnd.spin svg{animation:spin .5s ease-out}
+@keyframes spin{from{transform:rotate(-180deg) scale(.7)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){.rnd.spin svg{animation:none}}
 .hdr{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;max-width:100%}
 .chip.spot{min-width:0;overflow:hidden}
 #spotTxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -54,7 +61,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;fl
 .pad.special::after{left:0;top:0;bottom:0;right:auto;width:13px;height:auto;border-radius:0;background:repeating-linear-gradient(-45deg,var(--led) 0 7px,var(--ink) 7px 14px)}
 .pad.special .name{flex:0 0 auto;font-size:22px;font-style:italic;line-height:1}
 .pad.special .top{justify-content:space-between}
-.pad.special .tag{white-space:nowrap;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.pad.special .tag{white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
 .pad .secs{flex:none}
 .pad.special .secs{background:var(--led);color:var(--ink)}
 .pad.special .tn{color:var(--muted)}
@@ -149,7 +156,10 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
 <div class="app">
   <div class="stripe" aria-hidden="true"></div>
   <header>
-    <div class="brand">HEIA SOLA!</div>
+    <div class="brandrow">
+      <div class="brand">HEIA SOLA!</div>
+      <button class="rnd" id="rndBtn" hidden aria-label="Play a random song" title="Play a random song"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="8" cy="8" r="1.7" fill="currentColor"/><circle cx="16" cy="8" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="8" cy="16" r="1.7" fill="currentColor"/><circle cx="16" cy="16" r="1.7" fill="currentColor"/></svg><span>Random</span></button>
+    </div>
     <div class="hdr" id="hdrBtns" hidden>
       <button class="chip spot" id="spotChip" title="Spotify status – tap for details"><span class="led"></span><span id="spotTxt">Checking Spotify…</span></button>
       <button class="chip" id="wakeBtn" aria-pressed="false" aria-label="Keep screen on" title="Keep screen on">☀︎</button>
@@ -593,6 +603,15 @@ function drawPlaying(){
   });
   $('nowT').textContent=current?current.name:'–';
 }
+let lastRandom=null;
+$('rndBtn').addEventListener('click',()=>{ // a random numbered button, never the same one twice in a row
+  const pool=clips.filter(c=>!c.special&&c.uri);
+  if(!pool.length) return toast('Add a song first.');
+  const pick=pool.length>1?pool.filter(c=>c.id!==lastRandom):pool;
+  const c=pick[Math.floor(Math.random()*pick.length)]; lastRandom=c.id;
+  const b=$('rndBtn'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
+  playClip(c);
+});
 $('editBtn').addEventListener('click',()=>{ editMode=!editMode; $('editBtn').setAttribute('aria-pressed',editMode); $('editBtn').textContent=editMode?'Done':'Edit'; drawGrid(); });
 document.addEventListener('keydown',e=>{
   if(edOpen||!$('setScrim').hidden||/INPUT|TEXTAREA/.test(e.target.tagName)) return;
@@ -813,7 +832,7 @@ async function ensureSpecials(){
 /* ---------- boot ---------- */
 function showView(){
   const logged=!!tok;
-  $('setup').hidden=logged; $('main').hidden=!logged; $('hdrBtns').hidden=!logged; $('bar').hidden=!logged;
+  $('setup').hidden=logged; $('main').hidden=!logged; $('hdrBtns').hidden=!logged; $('rndBtn').hidden=!logged; $('bar').hidden=!logged;
   if(logged){ drawGrid(); loadDevices(); resolveSilent(); (async()=>{ if(!clips.length&&!store.get('seeded',false)) await seedPresets(); await ensureSpecials(); })(); }
   else { $('redir').textContent=REDIRECT; $('cid').value=clientId; }
 }
