@@ -44,7 +44,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;fl
 .hdr{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;max-width:100%}
 .chip.spot{min-width:0;overflow:hidden}
 #spotTxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#setBtn,#wakeBtn{font-size:16px;padding:5px 11px}
+#setBtn{font-size:16px;padding:5px 11px}
 .chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 10px;font-weight:600;font-size:13px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}
 .chip[aria-pressed="true"]{background:var(--led);color:var(--ink);border-color:var(--led)}
 .status{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14px;flex-wrap:wrap}
@@ -172,7 +172,6 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
     </div>
     <div class="hdr" id="hdrBtns" hidden>
       <button class="chip spot" id="spotChip" title="Spotify status – tap for details"><span class="led"></span><span id="spotTxt">Checking Spotify…</span></button>
-      <button class="chip" id="wakeBtn" aria-pressed="false" aria-label="Keep screen on" title="Keep screen on">☀︎</button>
       <button class="chip" id="setBtn" aria-label="Settings" title="Settings">⚙︎</button>
       <button class="chip" id="editBtn" aria-pressed="false">Edit</button>
     </div>
@@ -677,15 +676,12 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ---------- wake lock ---------- */
-let lock=null, wantLock=false;
+let lock=null; // the screen is always kept on while the app is open
 async function getLock(){ try{ lock=await navigator.wakeLock.request('screen'); lock.addEventListener('release',()=>lock=null); return true; }catch(e){ return false; } }
-$('wakeBtn').addEventListener('click',async()=>{
-  wantLock=!wantLock;
-  if(wantLock&&!(await getLock())){ wantLock=false; toast('This browser cannot keep the screen on. Set Auto-Lock to Never in the phone settings instead.'); }
-  if(!wantLock&&lock){ try{lock.release()}catch(e){} }
-  $('wakeBtn').setAttribute('aria-pressed',wantLock);
-});
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&wantLock&&!lock) getLock(); });
+function keepScreenOn(){ if(!lock&&!document.hidden&&'wakeLock' in navigator) getLock(); }
+keepScreenOn();
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,keepScreenOn,{passive:true})); // some browsers only allow it after a tap
+document.addEventListener('visibilitychange',keepScreenOn);
 
 /* ---------- settings ---------- */
 $('setBtn').addEventListener('click',()=>{ $('whichApp').textContent=clientId===DEFAULT_CLIENT_ID?'Connected through Ørjan\'s app.':'Connected through your own Spotify app.'; drawKa(); if(!ka.uri) resolveSilent(); $('backup').value=JSON.stringify(clips); drawDevices(); $('setScrim').hidden=false; loadDevices(); });
