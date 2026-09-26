@@ -182,7 +182,7 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
     <p class="small" style="font-size:15px;color:var(--text)">HEIA SOLA! controls Spotify on your phone. You need Spotify Premium. Choose how to connect:</p>
 
     <div class="card choice" id="chJoin">
-      <div class="choice-head"><span class="choice-num">A</span><h2>Join Ørjan's app</h2></div>
+      <div class="choice-head"><span class="choice-num">A</span><h2>Join Ørjan's app group</h2></div>
       <p class="small">Quickest. Ørjan adds your Spotify account to his app, then you log in. His app has room for 5 people.</p>
       <ol>
         <li>Send Ørjan your name and the <strong>email of your Spotify account</strong> (Spotify → Profile → Account).<br>
@@ -291,18 +291,18 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
     </div>
     <div class="field" id="edStartBox">
       <label for="edPos">Clip starts at</label>
-      <div class="range-row"><input type="range" id="edPos" min="0" max="240" step="0.1" value="0"></div>
+      <div class="range-row"><input type="range" id="edPos" min="0" max="240" step="0.05" value="0"></div>
       <div class="row"><span class="startval" id="edStart">0:00.0</span><span class="small" id="edLen"></span></div>
       <div class="row">
-        <button class="btn" data-n="-1">−1 s</button><button class="btn" data-n="-0.1">−0.1</button>
-        <button class="btn" data-n="0.1">+0.1</button><button class="btn" data-n="1">+1 s</button>
+        <button class="btn" data-n="-1">−1 s</button><button class="btn" data-n="-0.05">−0.05</button>
+        <button class="btn" data-n="0.05">+0.05</button><button class="btn" data-n="1">+1 s</button>
       </div>
       <label for="edEndPos" style="margin-top:10px">Clip ends at</label>
-      <div class="range-row"><input type="range" id="edEndPos" min="0" max="240" step="0.1" value="6"></div>
+      <div class="range-row"><input type="range" id="edEndPos" min="0" max="240" step="0.05" value="6"></div>
       <div class="row"><span class="startval" id="edEnd">0:06.0</span><span class="small" id="edClipLen"></span></div>
       <div class="row">
-        <button class="btn" data-e="-1">−1 s</button><button class="btn" data-e="-0.1">−0.1</button>
-        <button class="btn" data-e="0.1">+0.1</button><button class="btn" data-e="1">+1 s</button>
+        <button class="btn" data-e="-1">−1 s</button><button class="btn" data-e="-0.05">−0.05</button>
+        <button class="btn" data-e="0.05">+0.05</button><button class="btn" data-e="1">+1 s</button>
       </div>
       <p class="small">Easiest way: press <strong>Play song</strong>, press <strong>Start here</strong> when the good part comes, and <strong>End here</strong> where it should stop.</p>
       <div class="row">
@@ -346,7 +346,7 @@ const SCOPES='user-read-playback-state user-modify-playback-state user-read-curr
 const API='https://api.spotify.com/v1';
 const $=id=>document.getElementById(id);
 const REDIRECT=location.origin+location.pathname;
-const fmt=ms=>{const s=Math.max(0,(ms||0)/1000);const m=Math.floor(s/60);const r=s-m*60;return m+':'+(r<10?'0':'')+r.toFixed(1)};
+const fmt=ms=>{const s=Math.max(0,(ms||0)/1000);const m=Math.floor(s/60);const r=s-m*60;return m+':'+(r<10?'0':'')+r.toFixed(2)};
 const fmtShort=ms=>{const s=Math.max(0,Math.round((ms||0)/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -746,20 +746,20 @@ function syncEditor(){
   $('edPos').max=Math.max(1,T-1); $('edPos').value=c.start/1000;
   $('edEndPos').max=T; $('edEndPos').value=end/1000;
   $('edStart').textContent=fmt(c.start); $('edLen').textContent=has?'song is '+fmtShort(c.trackDur)+' long':'';
-  $('edEnd').textContent=fmt(end); $('edClipLen').textContent='clip is '+(+c.dur).toFixed(1).replace(/\.0$/,'')+' s';
+  $('edEnd').textContent=fmt(end); $('edClipLen').textContent='clip is '+(+c.dur).toFixed(2).replace(/\.?0+$/,'')+' s';
   $('edFadeO').textContent=c.fade+' s';
 }
 const MAXCLIP=600000;
 function setStart(ms){ // moving the start keeps the end where it was, unless that would make the clip too short or too long
   const c=ed.clip, end=c.start+c.dur*1000, T=c.trackDur||0;
-  c.start=Math.max(0,Math.min(T-1000,Math.round(ms/100)*100));
+  c.start=Math.max(0,Math.min(T-1000,Math.round(ms/50)*50));
   let e=end; if(e<c.start+1000||e>c.start+MAXCLIP) e=Math.min(T,c.start+6000);
-  c.dur=Math.max(1,Math.round((e-c.start)/100)/10); syncEditor();
+  c.dur=Math.max(1,Math.round((e-c.start)/50)*50/1000); syncEditor();
 }
 function setEnd(ms){
   const c=ed.clip, T=c.trackDur||0;
-  const e=Math.max(c.start+1000,Math.min(T,c.start+MAXCLIP,Math.round(ms/100)*100));
-  c.dur=Math.round((e-c.start)/100)/10; syncEditor();
+  const e=Math.max(c.start+1000,Math.min(T,c.start+MAXCLIP,Math.round(ms/50)*50));
+  c.dur=Math.round((e-c.start)/50)*50/1000; syncEditor();
 }
 $('edPos').addEventListener('input',e=>setStart(e.target.value*1000));
 document.querySelectorAll('#edStartBox [data-n]').forEach(b=>b.addEventListener('click',()=>setStart(ed.clip.start+b.dataset.n*1000)));
