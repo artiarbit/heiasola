@@ -609,7 +609,7 @@ $('stopBtn').addEventListener('click',stopNow);
 /* ---------- grid ---------- */
 let editMode=false;
 function el(tag,cls,txt){ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; }
-const secsTxt=d=>String(Math.round(d*10)/10);
+const secsTxt=d=>String(Math.round(d));
 function setSecs(node,d){ node.textContent='';
   if(d>=60){ const t=Math.round(d); node.appendChild(el('b',null,Math.floor(t/60)+':'+String(t%60).padStart(2,'0'))); }
   else { node.appendChild(el('b',null,secsTxt(d))); node.appendChild(document.createTextNode('s')); } }
