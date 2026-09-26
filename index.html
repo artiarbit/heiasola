@@ -353,7 +353,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 /* ---------- storage ---------- */
 const store={
   get(k,d){try{const v=localStorage.getItem('gmr-'+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
-  set(k,v){try{localStorage.setItem('gmr-'+k,JSON.stringify(v))}catch(e){}},
+  set(k,v){try{localStorage.setItem('gmr-'+k,JSON.stringify(v)); return true;}catch(e){ return false; }},
   del(k){try{localStorage.removeItem('gmr-'+k)}catch(e){}}
 };
 const DEFAULT_CLIENT_ID='d313ba4d10e0403fa567b4c59110550e'; // Ørjan's Spotify app (a Client ID is public, not a secret)
@@ -368,7 +368,13 @@ if(store.get('mig',0)<1){
   clips.forEach(c=>{ c.fade=Math.min(6,(c.fade||0)*2); if(c.id==='p0'){ c.start=61000; c.dur=9; } });
   store.set('clips',clips); store.set('mig',1);
 }
-const saveClips=()=>store.set('clips',clips);
+function saveClips(){ // save, then read back to be sure the phone really kept it
+  const ok=store.set('clips',clips)&&localStorage.getItem('gmr-clips')===JSON.stringify(clips);
+  if(!ok) toast('This browser did not save your buttons. Private browsing does not keep them. Open the app in a normal Safari tab or from the home-screen icon.');
+  return ok;
+}
+// If the app is open in two tabs, pick up changes saved in the other one instead of overwriting them later
+window.addEventListener('storage',e=>{ if(e.key==='gmr-clips'&&e.newValue&&!edOpen){ try{ clips=JSON.parse(e.newValue); drawGrid(); }catch(err){} } });
 
 /* ---------- toast ---------- */
 let toastT;
@@ -834,7 +840,7 @@ function askDelete(){
   box.append(y,n); w.appendChild(box);
 }
 $('edCancel').addEventListener('click',closeEditor);
-$('edScrim').addEventListener('click',e=>{ if(e.target===$('edScrim')) closeEditor(); });
+// Tapping outside the editor no longer closes it, so a new song can't be lost by a stray tap. Use Save or Cancel.
 $('edSave').addEventListener('click',()=>{
   const c=ed.clip;
   if(!c.uri){ toast('Choose a song first.'); return; }
