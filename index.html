@@ -171,7 +171,11 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
   <!-- first-time setup -->
   <section class="card" id="setup" hidden>
     <h2>Connect Spotify</h2>
-    <ol>
+    <p class="small" style="font-size:15px">Log in with your Spotify Premium account. Ørjan must first add your Spotify email to the app, otherwise Spotify will refuse the login.</p>
+    <button class="btn primary big" id="loginDefault">Log in with Spotify</button>
+    <details id="ownApp">
+    <summary class="small" style="cursor:pointer">Use your own Spotify developer app instead</summary>
+    <ol style="margin-top:10px">
       <li>Go to <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> and log in with your Spotify Premium account.</li>
       <li>Press <strong>Create app</strong>. Any name works. Tick <strong>Web API</strong>.</li>
       <li>Under <strong>Redirect URIs</strong>, add exactly this address:<br><span class="mono" id="redir"></span> <button class="btn" id="copyRedir" style="margin-top:6px;padding:4px 10px">Copy</button></li>
@@ -181,7 +185,8 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
       <label for="cid">Client ID</label>
       <input class="txt" id="cid" autocomplete="off" spellcheck="false" placeholder="32 letters and numbers">
     </div>
-    <button class="btn primary big" id="loginBtn">Log in with Spotify</button>
+    <button class="btn big" id="loginBtn">Log in with my own app</button>
+    </details>
     <p class="small" id="setupErr"></p>
   </section>
 
@@ -226,6 +231,11 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
       <textarea class="txt" id="backup" spellcheck="false"></textarea>
       <div class="row"><button class="btn" id="copyBackup">Copy</button><button class="btn" id="loadBackup">Load from text above</button></div>
       <p class="small">Copy this to move your buttons to another phone or browser.</p>
+    </div>
+    <div class="field">
+      <span class="lab">Heia Sola! defaults</span>
+      <div class="row" id="resetWrap"><button class="btn" id="resetDefaults">Reset to Heia Sola! defaults</button></div>
+      <p class="small">Replaces all buttons on this phone with the club's songs and timings.</p>
     </div>
     <div class="sheet-actions">
       <button class="btn danger" id="logout">Log out of Spotify</button>
@@ -294,6 +304,7 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
 (function(){
 'use strict';
 const COLORS=['#FFD400','#FFE45C','#F5B800','#FFF1A0','#FFC400','#FFFFFF','#E8C300','#FFEB85'];
+const DEFAULT_CLIPS=[{"id": "s0", "special": true, "name": "Me ska vinna!", "color": "#FFFFFF", "uri": "spotify:track:0QFki2qfzyD7zT0h8Dzo0t", "trackName": "Heia Sola! - Me Ska Vinna", "artist": "Ørjan", "art": "https://i.scdn.co/image/ab67616d0000485179335948fe9d10a018263f6f", "trackDur": 156757, "start": 0, "dur": 156.7, "fade": 2}, {"id": "s1", "special": true, "name": "Me har vunne!", "color": "#FFD400", "uri": "spotify:track:5UiD74gHcVqOZl04l17Fsj", "trackName": "Heia Sola! (Me Har Vunne)", "artist": "Ørjan", "art": "https://i.scdn.co/image/ab67616d00004851c518433e380f314aa226f94d", "trackDur": 152071, "start": 0, "dur": 152, "fade": 2}, {"id": "p0", "name": "Golden", "color": "#FFD400", "uri": "spotify:track:1CPZ5BxNNd0n0nF4Orb9JS", "trackName": "Golden", "artist": "HUNTR/X, EJAE, AUDREY NUNA, REI AMI, KPop Demon Hunters Cast", "art": "https://i.scdn.co/image/ab67616d000048514dcb6c5df15cf74596ab25a4", "trackDur": 194607, "start": 61600, "dur": 7.1, "fade": 2}, {"id": "p1", "name": "Olé", "color": "#FFE45C", "uri": "spotify:track:2McQQA5nCLVL0XvzcxWhFC", "trackName": "Ole", "artist": "The Bouncing Souls", "art": "https://i.scdn.co/image/ab67616d00004851c5c27a0c632634cc6247dfb9", "trackDur": 184293, "start": 20800, "dur": 14.5, "fade": 2}, {"id": "p2", "name": "Rasputin", "color": "#F5B800", "uri": "spotify:track:0b18g3G5spr4ZCkz7Y6Q0Q", "trackName": "Rasputin", "artist": "Majestic, Boney M.", "art": "https://i.scdn.co/image/ab67616d00004851f05cf0af79d057704dc994f4", "trackDur": 186209, "start": 7600, "dur": 6.7, "fade": 2}, {"id": "p3", "name": "Who Let the Dogs Out", "color": "#FFD400", "uri": "spotify:track:1H5tvpoApNDxvxDexoaAUo", "trackName": "Who Let The Dogs Out", "artist": "Baha Men", "art": "https://i.scdn.co/image/ab67616d0000485136c901204dd54a716c64932b", "trackDur": 198400, "start": 4200, "dur": 9.8, "fade": 2}, {"id": "p4", "name": "Thunder", "color": "#FFC400", "uri": "spotify:track:2USlegnFJLrVLpoVfPimKB", "trackName": "Thunder", "artist": "Gabry Ponte, LUM!X, Prezioso", "art": "https://i.scdn.co/image/ab67616d00004851fd13588a958fbd23d5524e1b", "trackDur": 160000, "start": 30200, "dur": 14.4, "fade": 2}, {"id": "p5", "name": "Hawks Power Play", "color": "#FFEB85", "uri": "spotify:track:5d1oPTa0ufnZQnEjgYDNoe", "trackName": "Hawks Power Play (Chicago Blackhawks Power Play Theme)", "artist": "Toners", "art": "https://i.scdn.co/image/ab67616d00004851063a599a6165126ab667a4b2", "trackDur": 77035, "start": 0, "dur": 13.7, "fade": 2}, {"id": "cmuijjgcz", "name": "Gangnam Style", "color": "#FFD400", "uri": "spotify:track:03UrZgTINDqvnUMbbIMhql", "trackName": "Gangnam Style (강남스타일)", "artist": "PSY", "art": "https://i.scdn.co/image/ab67616d000048516cfc57e5358c5e39e79bccbd", "trackDur": 219493, "start": 66300, "dur": 8.5, "fade": 2}, {"id": "cmuijxn0l", "name": "I'll Be There for You", "color": "#FFE45C", "uri": "spotify:track:15tHagkk8z306XkyOHqiip", "trackName": "I'll Be There for You - Theme From \"Friends\"", "artist": "The Rembrandts", "art": "https://i.scdn.co/image/ab67616d00004851a2535194dfef3e77437036b5", "trackDur": 188359, "start": 35700, "dur": 11.9, "fade": 2}, {"id": "cmuika8v5", "name": "T.N.T.", "color": "#FFE45C", "uri": "spotify:track:7LRMbd3LEoV5wZJvXT1Lwb", "trackName": "T.N.T.", "artist": "AC/DC", "art": "https://i.scdn.co/image/ab67616d000048518c7f355d649e0a3cfcf6fc39", "trackDur": 215096, "start": 54900, "dur": 19.5, "fade": 2}, {"id": "cmuikh5hb", "name": "Hit Me With Your Best Shot", "color": "#F5B800", "uri": "spotify:track:0vOkmmJEtjuFZDzrQSFzEE", "trackName": "Hit Me With Your Best Shot", "artist": "Pat Benatar", "art": "https://i.scdn.co/image/ab67616d000048511b83255ef342451b977987aa", "trackDur": 171266, "start": 136600, "dur": 14.9, "fade": 2}];
 const PRESETS=[
   {name:'Golden',q:'Golden HUNTR/X',artist:'huntr',start:61000,dur:9},
   {name:'Olé',q:'Ole Bouncing Souls',artist:'bouncing souls'},
@@ -316,7 +327,8 @@ const store={
   set(k,v){try{localStorage.setItem('gmr-'+k,JSON.stringify(v))}catch(e){}},
   del(k){try{localStorage.removeItem('gmr-'+k)}catch(e){}}
 };
-let clientId=store.get('clientId','');
+const DEFAULT_CLIENT_ID='d313ba4d10e0403fa567b4c59110550e'; // Ørjan's Spotify app (a Client ID is public, not a secret)
+let clientId=store.get('clientId','')||DEFAULT_CLIENT_ID;
 let tok=store.get('tok',null); // {access, refresh, exp}
 let device=store.get('device',null); // {id,name,type,vol,chosen}
 const PERSONAL=/^(smartphone|computer|tablet)$/i; // devices the page may pick by itself; speakers only when chosen in Settings
@@ -335,8 +347,8 @@ function toast(msg,kind){ const t=$('toast'); t.textContent=msg; t.className='to
 
 /* ---------- auth (PKCE, no server needed) ---------- */
 function b64url(bytes){ let s=''; bytes.forEach(b=>s+=String.fromCharCode(b)); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
-async function login(){
-  const id=$('cid').value.trim();
+async function login(useDefault){
+  const id=useDefault===true?DEFAULT_CLIENT_ID:$('cid').value.trim();
   if(!/^[0-9a-f]{32}$/i.test(id)){ $('setupErr').textContent='That does not look like a Client ID. It is 32 letters and numbers.'; return; }
   clientId=id; store.set('clientId',id);
   const verifier=b64url(crypto.getRandomValues(new Uint8Array(48)));
@@ -646,6 +658,15 @@ $('devWake').addEventListener('click',async()=>{
   const r=await api('PUT','/me/player',{device_ids:[device.id],play:false}).catch(()=>({ok:false,status:0}));
   if(r.ok){ toast('Spotify is now set to play on '+device.name+'.','info'); setTimeout(loadDevices,800); } else toast(explain(r));
 });
+function drawResetBtn(){ const w=$('resetWrap'); w.innerHTML=''; const b=el('button','btn','Reset to Heia Sola! defaults'); b.onclick=askReset; w.appendChild(b); }
+function askReset(){
+  const w=$('resetWrap'); w.innerHTML='';
+  const box=el('div','confirm','Replace all your buttons? ');
+  const y=el('button','btn danger','Yes, reset'); y.onclick=()=>{ loadDefaults(); $('backup').value=JSON.stringify(clips); drawResetBtn(); toast('Buttons reset to the Heia Sola! defaults.','info'); };
+  const n=el('button','btn','Cancel'); n.onclick=drawResetBtn;
+  box.append(y,n); w.appendChild(box);
+}
+$('resetDefaults').addEventListener('click',askReset);
 $('copyBackup').addEventListener('click',async()=>{ try{ await navigator.clipboard.writeText($('backup').value); toast('Copied.','info'); }catch(e){ $('backup').select(); } });
 $('loadBackup').addEventListener('click',()=>{
   try{ const a=JSON.parse($('backup').value); if(!Array.isArray(a)||a.some(x=>!x.uri)) throw 0; clips=a; saveClips(); drawGrid(); toast('Loaded '+a.length+' buttons.','info'); $('setScrim').hidden=true; }
@@ -835,14 +856,21 @@ async function ensureSpecials(){
   }
 }
 
+function loadDefaults(){ // Ørjan's club setup: songs, start/end times, fades and colours
+  clips=JSON.parse(JSON.stringify(DEFAULT_CLIPS));
+  store.set('seeded',true); store.set('specials',true); store.set('mig',1);
+  cue=null; saveClips(); drawGrid();
+}
+
 /* ---------- boot ---------- */
 function showView(){
   const logged=!!tok;
   $('setup').hidden=logged; $('main').hidden=!logged; $('hdrBtns').hidden=!logged; $('rndBtn').hidden=!logged; $('bar').hidden=!logged;
-  if(logged){ drawGrid(); loadDevices(); resolveSilent(); (async()=>{ if(!clips.length&&!store.get('seeded',false)) await seedPresets(); await ensureSpecials(); })(); }
-  else { $('redir').textContent=REDIRECT; $('cid').value=clientId; }
+  if(logged){ drawGrid(); loadDevices(); resolveSilent(); (async()=>{ if(!clips.length&&!store.get('seeded',false)) loadDefaults(); await ensureSpecials(); })(); }
+  else { $('redir').textContent=REDIRECT; $('cid').value=clientId===DEFAULT_CLIENT_ID?'':clientId; }
 }
-$('loginBtn').addEventListener('click',login);
+$('loginBtn').addEventListener('click',()=>login(false));
+$('loginDefault').addEventListener('click',()=>login(true));
 $('copyRedir').addEventListener('click',async()=>{ try{ await navigator.clipboard.writeText(REDIRECT); toast('Copied.','info'); }catch(e){} });
 (async function(){ await handleRedirect(); showView(); })();
 })();
