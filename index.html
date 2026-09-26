@@ -194,7 +194,7 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
 
 <div class="bar" id="bar" hidden>
   <div class="bar-in">
-    <div class="now"><div class="lbl">Now playing</div><div class="t" id="nowT">–</div></div>
+    <div class="now"><div class="lbl" id="nowLbl">Now playing</div><div class="t" id="nowT">–</div></div>
     <button class="stop" id="stopBtn">STOP</button>
   </div>
 </div>
@@ -318,7 +318,9 @@ const store={
 };
 let clientId=store.get('clientId','');
 let tok=store.get('tok',null); // {access, refresh, exp}
-let device=store.get('device',null); // {id,name,type,vol}
+let device=store.get('device',null); // {id,name,type,vol,chosen}
+const PERSONAL=/^(smartphone|computer|tablet)$/i; // devices the page may pick by itself; speakers only when chosen in Settings
+if(device&&!device.chosen&&!PERSONAL.test(device.type||'')){ device=null; store.del('device'); } // forget a speaker that was picked automatically
 let clips=store.get('clips',[]);
 // One-time update of buttons already saved on the phone: Golden plays 1:01–1:10, and every fade-out is twice as long
 if(store.get('mig',0)<1){
@@ -405,21 +407,25 @@ async function loadDevices(){
     devices=(r.json&&r.json.devices)||[];
     let d=device&&devices.find(x=>x.id===device.id);
     if(!d&&device) d=devices.find(x=>x.name===device.name&&x.type===device.type); // ids can change after restart
-    if(!d&&!device&&devices.length){ d=devices.find(x=>x.is_active)||devices[0]; }
+    if(!d&&!device){ // first time: pick the phone (or a computer/tablet), never a speaker on its own
+      const own=devices.filter(x=>PERSONAL.test(x.type));
+      d=own.find(x=>/smartphone/i.test(x.type)&&x.is_active)||own.find(x=>/smartphone/i.test(x.type))||own.find(x=>x.is_active)||own[0];
+    }
     if(d){
       const vol=(current||fading)&&device?device.vol:d.volume_percent; // don't pick up a volume we lowered ourselves while fading
-      device={id:d.id,name:d.name,type:d.type,vol:vol,canVol:!!d.supports_volume}; store.set('device',device);
+      device={id:d.id,name:d.name,type:d.type,vol:vol,canVol:!!d.supports_volume,chosen:!!(device&&device.chosen)}; store.set('device',device); drawNowOn();
       setStatus('ok','Ready · '+d.name+(d.is_active?'':' (idle)')+(ka.on?' · kept awake':''));
       $('statusWake').hidden=d.is_active;
       schedulePoll(20000);
     } else {
-      setStatus('warn',device?device.name+' has gone to sleep. Open Spotify on it and play any song for a second.':'No Spotify device found. Open Spotify on the phone, laptop or speaker you will play from.');
+      setStatus('warn',device?device.name+' has gone to sleep. Open Spotify on it and play any song for a second.':(devices.length?'Only speakers found. Open Spotify on this phone, or pick a speaker in Settings.':'No Spotify device found. Open Spotify on the phone, laptop or speaker you will play from.'));
       $('statusWake').hidden=true;
       schedulePoll(5000); // look again soon so the light turns green as soon as Spotify is back
     }
     drawDevices();
   }catch(e){ softFail('No internet connection to Spotify'); }
 }
+function drawNowOn(){ $('nowLbl').textContent=device?'Plays on '+device.name:'Now playing'; }
 function setStatus(kind,txt){
   $('status').className='status '+kind; $('statusTxt').textContent=txt; if(kind!=='ok') $('statusWake').hidden=true;
   $('spotChip').className='chip spot '+kind;
@@ -439,7 +445,7 @@ function drawDevices(){
     const l=document.createElement('span'); l.textContent=d.name;
     const s=document.createElement('small'); s.textContent=d.type+(d.is_active?' · active':'')+(d.supports_volume?'':' · no fade');
     b.append(l,s);
-    b.onclick=()=>{ device={id:d.id,name:d.name,type:d.type,vol:d.volume_percent,canVol:!!d.supports_volume}; store.set('device',device); cue=null; drawDevices(); setStatus('ok','Ready · '+d.name); };
+    b.onclick=()=>{ device={id:d.id,name:d.name,type:d.type,vol:d.volume_percent,canVol:!!d.supports_volume,chosen:true}; store.set('device',device); cue=null; drawDevices(); drawNowOn(); setStatus('ok','Ready · '+d.name); if(ka.on&&!current) idle(); };
     w.appendChild(b);
   });
 }
