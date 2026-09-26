@@ -228,7 +228,7 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
     </div>
     <div class="field">
       <label for="edFade">Fade out at the end</label>
-      <div class="range-row"><input type="range" id="edFade" min="0" max="3" step="0.5" value="1"><output id="edFadeO">1 s</output></div>
+      <div class="range-row"><input type="range" id="edFade" min="0" max="6" step="0.5" value="2"><output id="edFadeO">2 s</output></div>
       <p class="small" id="fadeNote">Fading only works on devices that let Spotify change their volume. iPhones don't, so there the clip just stops.</p>
     </div>
     <button class="btn big" id="edPreview">▶ Preview clip</button>
@@ -244,7 +244,7 @@ textarea.txt{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:
 'use strict';
 const COLORS=['#FFD400','#FFE45C','#F5B800','#FFF1A0','#FFC400','#FFFFFF','#E8C300','#FFEB85'];
 const PRESETS=[
-  {name:'Golden',q:'Golden HUNTR/X',artist:'huntr'},
+  {name:'Golden',q:'Golden HUNTR/X',artist:'huntr',start:61000,dur:9},
   {name:'Olé',q:'Ole Bouncing Souls',artist:'bouncing souls'},
   {name:'Rasputin',q:'Rasputin Majestic Boney M',artist:'majestic'},
   {name:'Who Let the Dogs Out',q:'Who Let The Dogs Out Baha Men',artist:'baha men'},
@@ -269,6 +269,11 @@ let clientId=store.get('clientId','');
 let tok=store.get('tok',null); // {access, refresh, exp}
 let device=store.get('device',null); // {id,name,type,vol}
 let clips=store.get('clips',[]);
+// One-time update of buttons already saved on the phone: Golden plays 1:01–1:10, and every fade-out is twice as long
+if(store.get('mig',0)<1){
+  clips.forEach(c=>{ c.fade=Math.min(6,(c.fade||0)*2); if(c.id==='p0'){ c.start=61000; c.dur=9; } });
+  store.set('clips',clips); store.set('mig',1);
+}
 const saveClips=()=>store.set('clips',clips);
 
 /* ---------- toast ---------- */
@@ -498,7 +503,7 @@ $('logout').addEventListener('click',()=>{ $('setScrim').hidden=true; logoutLoca
 let ed=null, edOpen=false;
 function openEditor(c){
   edOpen=true;
-  ed={isNew:!c, clip:c?Object.assign({},c):{id:'c'+Date.now().toString(36),name:'',color:COLORS[clips.length%COLORS.length],uri:'',trackName:'',artist:'',art:'',trackDur:0,start:0,dur:6,fade:1}};
+  ed={isNew:!c, clip:c?Object.assign({},c):{id:'c'+Date.now().toString(36),name:'',color:COLORS[clips.length%COLORS.length],uri:'',trackName:'',artist:'',art:'',trackDur:0,start:0,dur:6,fade:2}};
   $('edTitle').textContent=c?'Edit button':'New button';
   $('edName').value=ed.clip.name; $('edDur').value=ed.clip.dur; $('edFade').value=ed.clip.fade;
   $('edSearch').value=''; $('edResults').innerHTML='';
@@ -608,8 +613,8 @@ $('edSave').addEventListener('click',()=>{
 
 /* ---------- preset songs ---------- */
 async function seedPresets(){
-  store.set('seeded',true);
-  clips=PRESETS.map((p,i)=>({id:'p'+i,name:p.name,color:COLORS[i%COLORS.length],uri:'',trackName:'Finding song on Spotify…',artist:'',art:'',trackDur:0,start:0,dur:6,fade:1}));
+  store.set('seeded',true); store.set('mig',1);
+  clips=PRESETS.map((p,i)=>({id:'p'+i,name:p.name,color:COLORS[i%COLORS.length],uri:'',trackName:'Finding song on Spotify…',artist:'',art:'',trackDur:0,start:p.start||0,dur:p.dur||6,fade:2}));
   saveClips(); drawGrid();
   for(let i=0;i<PRESETS.length;i++){
     const p=PRESETS[i], c=clips.find(x=>x.id==='p'+i); if(!c) continue;
