@@ -644,7 +644,7 @@ function drawGrid(){
     b.addEventListener('click',()=>{ if(editMode) openEditor(c); else playClip(c); });
     grid.appendChild(b);
   });
-  if(editMode||!clips.some(c=>!c.special)){
+  {
     const a=document.createElement('button'); a.className='pad add';
     const nm=document.createElement('span'); nm.className='name'; nm.textContent='+ Add song';
     a.appendChild(nm); a.addEventListener('click',()=>openEditor(null)); grid.appendChild(a);
