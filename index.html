@@ -629,7 +629,7 @@ function drawGrid(){
     const foot=el('span','foot');
     if(c.art){ const im=document.createElement('img'); im.className='art'; im.src=c.art; im.alt=''; im.onerror=()=>im.remove(); foot.appendChild(im); }
     const info=el('span','info');
-    info.appendChild(el('span','tn',c.uri?(c.trackName||'')+(c.artist?' · '+c.artist:''):(c.trackName||'No song yet – tap Edit')));
+    info.appendChild(el('span','tn',c.uri?(c.artist||c.trackName||''):(c.trackName||'No song yet – tap Edit')));
     if(c.uri) info.appendChild(el('span','rng',fmtShort(c.start)+' – '+fmtShort(c.start+c.dur*1000)));
     foot.appendChild(info);
     b.append(top,nm,foot,el('span','prog'));
