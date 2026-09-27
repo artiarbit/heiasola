@@ -16,7 +16,7 @@ export const REDIRECT_URI = location.origin + location.pathname;
  * Online storage: the Cloudflare Worker running cloudflare/worker.js (Ørjan's Cloudflare account).
  * Set to '' to turn online storage off; buttons are then only kept on the phone.
  */
-export const CLOUD_URL = 'https://dark-butterfly-3c23.artiarbit.workers.dev';
+export const CLOUD_URL = '';  // switch on: 'https://dark-butterfly-3c23.artiarbit.workers.dev' (after the Worker code is deployed)
 
 /** Track played on repeat between goals so the Spotify app on a phone doesn't fall asleep. */
 export const SILENT_TRACK = 'Silence 10 Minutes';
