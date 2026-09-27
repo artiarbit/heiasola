@@ -61,6 +61,10 @@ export const state = {
 
 export const regularClips = () => state.clips.filter(c => !c.special);
 export const specialClips = () => state.clips.filter(c => c.special);
+/** Favourites the person pinned: shown first, with a pin instead of a number. */
+export const pinnedClips = () => regularClips().filter(c => c.pinned);
+/** The numbered buttons (1, 2, 3…), after the pinned ones. */
+export const numberedClips = () => regularClips().filter(c => !c.pinned);
 
 /** Saves the buttons, warns if the browser didn't keep them, and redraws. */
 export function saveClips() {

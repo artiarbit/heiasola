@@ -50,6 +50,7 @@ Screen modules only touch the DOM inside `init*()` functions or handlers (avoids
   fade,                       // fade-out seconds (only works on devices that allow volume control)
   special?: true,             // the two wide Heia Sola! buttons at the top (not numbered, not in Random)
   noRandom?: true,            // left out of the Random button
+  pinned?: true,              // favourite: shown first with a pin instead of a number (personal, not shared)
   sharedBy?: 'Ørjan',         // came from someone's "Share with everyone" (id is then 'sh' + shared row id)
   sharedAt?: 1759000000000 }  // when this person last shared it
 ```

@@ -87,6 +87,24 @@ try {
     check('new song still there after reload', await page.locator('#grid .pad[data-id]').count() === before - 1);
   }
 
+  console.log('Pinning');
+  {
+    await page.click('#editBtn');
+    const third = page.locator('#grid .pad[data-id]').nth(2);
+    const id = await third.getAttribute('data-id');
+    await third.click();
+    await page.check('#edPin');
+    await page.click('#edSave');
+    await page.click('#editBtn');
+    const first = page.locator('#grid .pad[data-id]').first();
+    check('pinned song moves to the top', (await first.getAttribute('data-id')) === id);
+    check('it shows a pin instead of a number', await first.locator('.num.pin svg').count() === 1);
+    check('numbering starts at 1 after the pinned songs', (await page.locator('#grid .pad[data-id]').nth(1).locator('.num').textContent()) === '1');
+    await page.screenshot({ path: path.join(OUT, '2b-pinned.png') });
+    await page.reload(); await page.waitForTimeout(500);
+    check('pin is kept after reload', (await page.locator('#grid .pad[data-id]').first().getAttribute('data-id')) === id);
+  }
+
   console.log('Settings');
   {
     await page.click('#setBtn');

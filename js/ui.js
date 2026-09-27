@@ -1,6 +1,6 @@
 // Main screen: header, buttons, now-playing bar, status chip and messages.
 
-import { state, on, regularClips, specialClips } from './state.js';
+import { state, on, specialClips, pinnedClips, numberedClips } from './state.js';
 import { $, el, fmtShort } from './dom.js';
 import { playClip, playRandom, stopNow } from './player.js';
 import { openEditor } from './editor.js';
@@ -43,13 +43,22 @@ function specialPad(c) {
   return b;
 }
 
+const PIN_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M15 2.5 21.5 9l-2 1-3 3 .5 4.5-1.5 1.5-4-4-5 5H5v-1.5l5-5-4-4L7.5 8.5 12 9l3-3z"/></svg>';
+function pinBadge() {
+  const b = el('span', 'num pin');
+  b.innerHTML = PIN_SVG;
+  b.title = 'Pinned';
+  return b;
+}
+
+/** i = position among the numbered buttons, or null for a pinned button. */
 function regularPad(c, i) {
   const b = el('button', 'pad');
   b.dataset.id = c.id;
   b.style.setProperty('--c', c.color);
 
   const top = el('span', 'top');
-  top.appendChild(el('span', 'num' + (i >= 9 ? ' two' : ''), String(i + 1)));
+  top.appendChild(i === null ? pinBadge() : el('span', 'num' + (i >= 9 ? ' two' : ''), String(i + 1)));
   if (state.editMode) top.appendChild(el('span', 'edit-tag', '✎ Edit'));
   else if (state.cue && state.cue.uri === c.uri && state.cue.pos === c.start) top.appendChild(el('span', 'cued', 'Ready'));
   top.appendChild(secsBadge(c));
@@ -80,7 +89,7 @@ function addPad() {
 
 export function renderButtons() {
   $('specials').replaceChildren(...specialClips().map(specialPad));
-  $('grid').replaceChildren(...regularClips().map(regularPad), addPad());
+  $('grid').replaceChildren(...pinnedClips().map(c => regularPad(c, null)), ...numberedClips().map((c, i) => regularPad(c, i)), addPad());
   renderPlaying();
 }
 
@@ -183,7 +192,7 @@ export function initUI() {
   document.addEventListener('keydown', e => {
     if (state.editorOpen || !$('setScrim').hidden || /INPUT|TEXTAREA/.test(e.target.tagName)) return;
     if (e.key === 'Escape' || e.key === ' ') { e.preventDefault(); stopNow(); return; }
-    const n = parseInt(e.key, 10), list = regularClips();
+    const n = parseInt(e.key, 10), list = numberedClips();
     if (n >= 1 && n <= 9 && list[n - 1] && !state.editMode) playClip(list[n - 1]);
   });
 

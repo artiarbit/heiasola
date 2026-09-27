@@ -89,6 +89,7 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .pad .top { display: flex; align-items: center; gap: 8px; position: relative; z-index: 1; }
 .pad .num { width: 30px; height: 30px; border-radius: 50%; background: var(--ink); color: var(--c); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 17px; flex: none; }
 .pad .num.two { font-size: 14px; letter-spacing: -.02em; }
+.pad .num.pin svg { display: block; }
 .pad .secs {
   flex: none; margin-left: auto; background: rgba(10,10,10,.88); color: var(--c); border-radius: 999px; padding: 3px 11px;
   font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap;

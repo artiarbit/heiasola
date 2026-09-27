@@ -29,6 +29,8 @@ export function openEditor(c) {
   $('edFade').value = ed.clip.fade;
   $('edRnd').checked = !ed.clip.noRandom;
   $('edRndField').hidden = !!ed.clip.special;
+  $('edPin').checked = !!ed.clip.pinned;
+  $('edPinField').hidden = !!ed.clip.special;
   $('edSearch').value = '';
   $('edResults').replaceChildren();
   renderDelete(c ? 'button' : 'none');
@@ -223,6 +225,7 @@ export function initEditor() {
   document.querySelectorAll('#edStartBox [data-n]').forEach(b => b.addEventListener('click', () => setStart(ed.clip.start + b.dataset.n * 1000)));
   document.querySelectorAll('#edStartBox [data-e]').forEach(b => b.addEventListener('click', () => setEnd(endMs(ed.clip) + b.dataset.e * 1000)));
   $('edFade').addEventListener('input', e => { ed.clip.fade = +e.target.value; render(); });
+  $('edPin').addEventListener('change', e => { if (e.target.checked) ed.clip.pinned = true; else delete ed.clip.pinned; });
   $('edRnd').addEventListener('change', e => { if (e.target.checked) delete ed.clip.noRandom; else ed.clip.noRandom = true; });
   $('edName').addEventListener('input', e => { ed.clip.name = e.target.value; });
   $('edChange').addEventListener('click', () => { ed.clip.uri = ''; render(); $('edSearch').focus(); });
