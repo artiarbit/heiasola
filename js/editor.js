@@ -6,6 +6,7 @@ import { spotify, explain, trackInfo } from './spotify.js';
 import { playClip, idle, listenFrom, pauseListening, positionIn } from './player.js';
 import { COLORS, TIMING } from './config.js';
 import { $, el, fmtPrecise, fmtShort } from './dom.js';
+import { cloudEnabled, shareClip } from './cloud.js';
 
 let ed = null;  // { isNew, clip }
 
@@ -32,6 +33,7 @@ export function openEditor(c) {
   $('edResults').replaceChildren();
   renderDelete(c ? 'button' : 'none');
   $('fadeNote').hidden = !!state.device?.canVol;
+  renderShare();
   renderSwatches();
   render();
   $('edScrim').hidden = false;
@@ -149,6 +151,31 @@ async function onSearchInput(e) {
   }, 350);
 }
 
+/* ---------- share ---------- */
+
+function renderShare() {
+  const c = ed.clip;
+  $('edShareField').hidden = !cloudEnabled() || ed.isNew || !!c.special;
+  const notes = [];
+  if (c.sharedBy) notes.push('Shared with you by ' + c.sharedBy + '.');
+  if (c.sharedAt) notes.push('You shared this on ' + new Date(c.sharedAt).toLocaleDateString() + '. Sharing again sends your current start and end to people who don\'t have the song yet.');
+  $('edShareNote').textContent = notes.length ? notes.join(' ')
+    : 'Adds this song, with its start and end, to everyone else\'s list next time they open the app. Your changes are saved too.';
+}
+
+async function share() {
+  const c = ed.clip;
+  if (!c.uri) { toast('Choose a song first.'); return; }
+  $('edShare').disabled = true;
+  const row = await shareClip({ ...c, name: (c.name || '').trim() || c.trackName.slice(0, 40) });
+  if (!ed) return;
+  $('edShare').disabled = false;
+  if (!row) return;
+  c.sharedAt = Date.now();
+  save();
+  toast(`Shared. Others get “${c.name}” next time they open the app.`, 'info');
+}
+
 /* ---------- delete / save ---------- */
 
 function renderDelete(mode) {
@@ -217,5 +244,6 @@ export function initEditor() {
 
   $('edCancel').addEventListener('click', closeEditor);
   $('edSave').addEventListener('click', save);
+  $('edShare').addEventListener('click', share);
   // Tapping outside the sheet deliberately does nothing, so a new song can't be lost by a stray tap.
 }
