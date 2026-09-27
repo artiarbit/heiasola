@@ -162,7 +162,7 @@ export function notRegisteredMessage() {
 export function explain(res) {
   const reason = errorReason(res);
   if (res.status === 0) return 'No connection to Spotify.';
-  if (res.status === 404) return 'Spotify can\'t find the playing device. Open Spotify on it, play any song for a second, then try again.';
+  if (res.status === 404) return 'Spotify not responding. Make sure the app is open in the background and try to play a song on it.';
   if (res.status === 403 && /PREMIUM/i.test(reason)) return 'Spotify needs a Premium account for remote control.';
   if (res.status === 403 && /regist|dashboard/i.test(reason)) return notRegisteredMessage();
   if (res.status === 403) return 'Spotify refused this (' + reason + '). If the device is an iPhone, volume changes are not allowed.';
