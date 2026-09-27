@@ -88,18 +88,12 @@ export const usingDefaultApp = () => state.clientId === DEFAULT_CLIENT_ID;
 
 /* ---------- Web API ---------- */
 
-/** A Spotify access token that is valid for at least another minute, or null if logged out. */
-export async function freshToken() {
-  if (!state.tok) return null;
-  if (Date.now() > state.tok.exp - 60000) {
-    try { await refreshToken(); } catch { logout(); return null; }
-  }
-  return state.tok.access;
-}
-
 export async function api(method, path, body) {
-  if (!(await freshToken())) return { ok: false, status: 401, json: null };
+  if (!state.tok) return { ok: false, status: 401, json: null };
   try {
+    if (Date.now() > state.tok.exp - 60000) {
+      try { await refreshToken(); } catch { logout(); return { ok: false, status: 401, json: null }; }
+    }
     const send = () => fetch(API + path, {
       method,
       headers: { Authorization: 'Bearer ' + state.tok.access, ...(body ? { 'Content-Type': 'application/json' } : {}) },

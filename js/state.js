@@ -12,8 +12,6 @@
 //   'ka'                   keep-awake setting or silent track changed
 //   'latency' (ms, what)   how long Spotify took to answer ('play' | 'check')
 //   'toast'  (text, kind)  show a message; kind 'info' = neutral, otherwise error
-//   'saved'                the buttons were saved on the phone (cloud.js uploads them)
-//   'cloud'                online storage status changed (see cloud.js)
 
 import { store } from './store.js';
 import { DEFAULT_CLIENT_ID, PERSONAL_DEVICE, SILENT_TRACK } from './config.js';
@@ -67,7 +65,6 @@ export function saveClips() {
   const ok = store.setVerified('clips', state.clips);
   if (!ok) toast('This browser did not save your buttons. Private browsing does not keep them. Open the app in a normal Safari tab or from the home-screen icon.');
   emit('clips');
-  emit('saved');
   return ok;
 }
 

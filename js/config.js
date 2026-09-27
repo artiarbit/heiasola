@@ -12,12 +12,6 @@ export const SCOPES = 'user-read-playback-state user-modify-playback-state user-
 /** Must match a Redirect URI registered in the Spotify dashboard exactly. */
 export const REDIRECT_URI = location.origin + location.pathname;
 
-/**
- * Online storage (Supabase Edge Function "heiasola", see supabase/). Empty = off: buttons are only
- * kept on the phone. Example: 'https://abcdefgh.supabase.co/functions/v1/heiasola'
- */
-export const CLOUD_URL = '';
-
 /** Track played on repeat between goals so the Spotify app on a phone doesn't fall asleep. */
 export const SILENT_TRACK = 'Silence 10 Minutes';
 

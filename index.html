@@ -112,12 +112,6 @@
       <div class="row"><button class="chip" id="kaBtn" aria-pressed="false">Off</button><span class="small" id="kaTrack"></span></div>
       <p class="small">Phones put Spotify to sleep a few minutes after the music stops, and then it drops off the list. With this on, Spotify plays a silent track on repeat between goals so it stays awake. Each press then loads the song fresh, which is a little slower than a <strong>Ready</strong> button, but it won't find Spotify asleep.</p>
     </div>
-    <div class="field" id="cloudField" hidden>
-      <span class="lab">Online storage</span>
-      <p class="small" id="cloudUser"></p>
-      <div class="status" id="cloudStatus"><span class="led"></span><span class="stxt" id="cloudTxt"></span></div>
-      <p class="small">Your buttons are saved with your Spotify account, so they are the same on every phone and browser you log in on.</p>
-    </div>
     <div class="field">
       <label for="backup">Backup of your buttons</label>
       <textarea class="txt" id="backup" spellcheck="false"></textarea>
@@ -193,11 +187,6 @@
       <label class="rndopt" for="edRnd"><input type="checkbox" id="edRnd" checked> Include this song when pressing Random</label>
     </div>
     <button class="btn big" id="edPreview">▶ Preview clip</button>
-    <div class="field" id="edShareField" hidden>
-      <span class="lab">Share</span>
-      <div class="row"><button class="btn" id="edShare">Share with everyone</button></div>
-      <p class="small" id="edShareNote">Adds this song, with its start and end, to everyone else's list next time they open the app. Your changes are saved too.</p>
-    </div>
     <div class="sheet-actions">
       <div id="delWrap"></div>
       <div class="right"><button class="btn" id="edCancel">Cancel</button><button class="btn primary" id="edSave">Save</button></div>

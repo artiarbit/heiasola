@@ -6,7 +6,6 @@ import { refreshDevices, chooseDevice, makeActive } from './devices.js';
 import { resolveSilent, isResolvingSilent, setKeepAwake } from './player.js';
 import { SILENT_TRACK, OWNER } from './config.js';
 import { $, el, copyText } from './dom.js';
-import { cloud, cloudEnabled, sync } from './cloud.js';
 
 export function openSettings() {
   $('whichApp').textContent = usingDefaultApp() ? `Connected through ${OWNER}'s app.` : 'Connected through your own Spotify app.';
@@ -15,8 +14,6 @@ export function openSettings() {
   $('backup').value = JSON.stringify(state.clips);
   renderReset('button');
   renderDevices();
-  renderCloud();
-  if (cloudEnabled() && cloud.status !== 'syncing') sync();
   $('setScrim').hidden = false;
   refreshDevices();
 }
@@ -40,15 +37,6 @@ function renderStatus(kind, text, canWake) {
   $('status').className = 'status ' + kind;
   $('statusTxt').textContent = text;
   $('statusWake').hidden = !(kind === 'ok' && canWake);
-}
-
-const CLOUD_LIGHT = { ok: 'ok', syncing: 'warn', offline: 'warn', error: 'bad', off: '' };
-function renderCloud() {
-  $('cloudField').hidden = !cloudEnabled();
-  if (!cloudEnabled()) return;
-  $('cloudUser').textContent = cloud.user ? 'Logged in to Spotify as ' + cloud.user.name + '.' : '';
-  $('cloudStatus').className = 'status ' + CLOUD_LIGHT[cloud.status];
-  $('cloudTxt').textContent = cloud.text || '…';
 }
 
 function renderKeepAwake() {
@@ -99,7 +87,6 @@ export function initSettings() {
   on('status', renderStatus);
   on('latency', (ms, what) => { $('latency').textContent = (what === 'play' ? 'Last press: ' : 'Spotify responds in ') + Math.round(ms) + ' ms'; });
   on('ka', renderKeepAwake);
-  on('cloud', renderCloud);
 
   $('setClose').addEventListener('click', closeSettings);
   $('setScrim').addEventListener('click', e => { if (e.target === $('setScrim')) closeSettings(); });
