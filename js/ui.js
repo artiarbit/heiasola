@@ -44,7 +44,14 @@ function specialPad(c) {
 }
 
 const PIN_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M15 2.5 21.5 9l-2 1-3 3 .5 4.5-1.5 1.5-4-4-5 5H5v-1.5l5-5-4-4L7.5 8.5 12 9l3-3z"/></svg>';
-/** Small pin toggle on each button. A pinned button shows the pin in place of its number. */
+function pinBadge() {
+  const b = el('span', 'num pin');
+  b.innerHTML = PIN_SVG;
+  b.title = 'Pinned';
+  return b;
+}
+
+/** Small pin toggle on each button (Edit mode). A pinned button shows the pin in place of its number. */
 function pinToggle(c) {
   const b = el('span', c.pinned ? 'num pin pintog' : 'pintog');
   b.innerHTML = PIN_SVG;
@@ -71,13 +78,14 @@ function regularPad(c, i) {
   b.style.setProperty('--c', c.color);
 
   const top = el('span', 'top');
-  if (i === null) top.appendChild(pinToggle(c));
+  // Pinning only happens in Edit mode, so a slightly off tap during a match can't reorder the buttons.
+  // In Edit mode the pin toggle takes the place of the "✎ Edit" label (the dashed outline shows the mode).
+  if (i === null) top.appendChild(state.editMode ? pinToggle(c) : pinBadge());
   else {
     top.appendChild(el('span', 'num' + (i >= 9 ? ' two' : ''), String(i + 1)));
-    if (!state.editMode) top.appendChild(pinToggle(c));  // in Edit mode the "✎ Edit" label needs the room
+    if (state.editMode) top.appendChild(pinToggle(c));
   }
-  if (state.editMode) top.appendChild(el('span', 'edit-tag', '✎ Edit'));
-  else if (state.cue && state.cue.uri === c.uri && state.cue.pos === c.start) top.appendChild(el('span', 'cued', 'Ready'));
+  if (!state.editMode && state.cue && state.cue.uri === c.uri && state.cue.pos === c.start) top.appendChild(el('span', 'cued', 'Ready'));
   top.appendChild(secsBadge(c));
 
   const foot = el('span', 'foot');
@@ -106,6 +114,7 @@ function addPad() {
 
 export function renderButtons() {
   $('specials').replaceChildren(...specialClips().map(specialPad));
+  $('grid').classList.toggle('editing', state.editMode);
   $('grid').replaceChildren(...pinnedClips().map(c => regularPad(c, null)), ...numberedClips().map((c, i) => regularPad(c, i)), addPad());
   renderPlaying();
 }
