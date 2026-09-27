@@ -90,6 +90,12 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .pad .num { width: 30px; height: 30px; border-radius: 50%; background: var(--ink); color: var(--c); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 17px; flex: none; }
 .pad .num.two { font-size: 14px; letter-spacing: -.02em; }
 .pad .num.pin svg { display: block; }
+/* pin toggle: faint outline pin next to the number; a pinned button shows a filled pin instead */
+.pad .pintog { cursor: pointer; flex: none; }
+.pad .pintog:not(.num) { width: 28px; height: 28px; margin-left: -2px; border-radius: 50%; display: grid; place-items: center; color: rgba(10,10,10,.4); border: 1.5px solid rgba(10,10,10,.25); }
+.pad .pintog:not(.num):active { background: rgba(10,10,10,.12); }
+.pad.playing .pintog:not(.num) { color: color-mix(in srgb, var(--c), transparent 45%); border-color: color-mix(in srgb, var(--c), transparent 70%); }
+.pad .pintog svg { display: block; pointer-events: none; }
 .pad .secs {
   flex: none; margin-left: auto; background: rgba(10,10,10,.88); color: var(--c); border-radius: 999px; padding: 3px 11px;
   font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap;

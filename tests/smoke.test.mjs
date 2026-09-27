@@ -105,6 +105,22 @@ try {
     check('pin is kept after reload', (await page.locator('#grid .pad[data-id]').first().getAttribute('data-id')) === id);
   }
 
+  console.log('Pin toggle on the main screen');
+  {
+    const pads = page.locator('#grid .pad[data-id]');
+    const target = pads.nth(3);  // a numbered song
+    const id = await target.getAttribute('data-id');
+    const playsBefore = calls.filter(c => c.path === '/me/player/play').length;
+    await target.locator('.pintog').click();
+    await page.waitForTimeout(200);
+    check('tapping the pin does not play the song', calls.filter(c => c.path === '/me/player/play').length === playsBefore);
+    check('tapping the pin moves the song to the top', (await pads.first().getAttribute('data-id')) === id || (await pads.nth(1).getAttribute('data-id')) === id);
+    await page.screenshot({ path: path.join(OUT, '2c-pin-toggle.png') });
+    await page.locator(`#grid .pad[data-id="${id}"] .pintog`).click();
+    await page.waitForTimeout(200);
+    check('tapping the pin again unpins it', !(await stored(page)).find(c => c.id === id).pinned);
+  }
+
   console.log('Settings');
   {
     await page.click('#setBtn');

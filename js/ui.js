@@ -1,6 +1,6 @@
 // Main screen: header, buttons, now-playing bar, status chip and messages.
 
-import { state, on, specialClips, pinnedClips, numberedClips } from './state.js';
+import { state, on, specialClips, pinnedClips, numberedClips, saveClips, toast } from './state.js';
 import { $, el, fmtShort } from './dom.js';
 import { playClip, playRandom, stopNow } from './player.js';
 import { openEditor } from './editor.js';
@@ -44,11 +44,24 @@ function specialPad(c) {
 }
 
 const PIN_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M15 2.5 21.5 9l-2 1-3 3 .5 4.5-1.5 1.5-4-4-5 5H5v-1.5l5-5-4-4L7.5 8.5 12 9l3-3z"/></svg>';
-function pinBadge() {
-  const b = el('span', 'num pin');
+/** Small pin toggle on each button. A pinned button shows the pin in place of its number. */
+function pinToggle(c) {
+  const b = el('span', c.pinned ? 'num pin pintog' : 'pintog');
   b.innerHTML = PIN_SVG;
-  b.title = 'Pinned';
+  b.setAttribute('role', 'button');
+  b.setAttribute('aria-label', c.pinned ? 'Unpin ' + c.name : 'Pin ' + c.name + ' to the top');
+  b.title = c.pinned ? 'Unpin' : 'Pin to the top';
+  b.addEventListener('click', e => {
+    e.stopPropagation();  // don't play the song
+    togglePin(c);
+  });
   return b;
+}
+
+function togglePin(c) {
+  if (c.pinned) delete c.pinned; else c.pinned = true;
+  saveClips();
+  toast(c.pinned ? `Pinned “${c.name}” to the top` : `Unpinned “${c.name}”`, 'info');
 }
 
 /** i = position among the numbered buttons, or null for a pinned button. */
@@ -58,7 +71,11 @@ function regularPad(c, i) {
   b.style.setProperty('--c', c.color);
 
   const top = el('span', 'top');
-  top.appendChild(i === null ? pinBadge() : el('span', 'num' + (i >= 9 ? ' two' : ''), String(i + 1)));
+  if (i === null) top.appendChild(pinToggle(c));
+  else {
+    top.appendChild(el('span', 'num' + (i >= 9 ? ' two' : ''), String(i + 1)));
+    if (!state.editMode) top.appendChild(pinToggle(c));  // in Edit mode the "✎ Edit" label needs the room
+  }
   if (state.editMode) top.appendChild(el('span', 'edit-tag', '✎ Edit'));
   else if (state.cue && state.cue.uri === c.uri && state.cue.pos === c.start) top.appendChild(el('span', 'cued', 'Ready'));
   top.appendChild(secsBadge(c));
