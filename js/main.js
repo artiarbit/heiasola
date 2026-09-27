@@ -9,6 +9,7 @@ import { initUI, showScreen } from './ui.js';
 import { initEditor } from './editor.js';
 import { initSettings } from './settings.js';
 import { initSetup, showSetupError } from './setup.js';
+import { initCloud, sync as syncCloud } from './cloud.js';
 
 /** Keeps the phone screen on while the app is open (where the browser allows it). */
 function keepScreenOn() {
@@ -37,6 +38,7 @@ function onLoginChange() {
   showScreen();
   if (!state.tok) return;
   ensureClips();
+  syncCloud();
   refreshDevices();
   resolveSilent();
 }
@@ -46,6 +48,7 @@ async function start() {
   initEditor();
   initSettings();
   initSetup();
+  initCloud();
   keepScreenOn();
   syncAcrossTabs();
 
