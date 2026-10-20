@@ -40,7 +40,8 @@ function setStatus(status, text) {
 }
 
 async function call(method, body) {
-  const token = await freshToken();
+  let token;
+  try { token = await freshToken(); } catch { return { ok: false, status: 0, json: null }; }
   if (!token) return { ok: false, status: 401, json: null };
   try {
     const r = await fetch(cloudUrl(), {

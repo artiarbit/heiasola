@@ -1,13 +1,20 @@
 // Which Spotify device plays the music, and the connection status light.
 // Polls Spotify's device list regularly; that also keeps the login fresh.
 
-import { state, emit, saveDevice, toast } from './state.js';
+import { state, on, emit, saveDevice, toast } from './state.js';
 import { spotify, explain, errorReason, notRegisteredMessage } from './spotify.js';
 import { PERSONAL_DEVICE, TIMING } from './config.js';
 import { idle } from './player.js';
 
 let fails = 0;
 let pollTimer = null;
+
+// A press that got no answer from Spotify: re-check now, so the light doesn't stay green.
+let recheckSoon = null;
+on('noanswer', path => {
+  if (path === '/me/player/devices' || recheckSoon) return;  // the check itself failing is handled by softFail
+  recheckSoon = setTimeout(() => { recheckSoon = null; refreshDevices(); }, 500);
+});
 
 export function schedulePoll(ms) {
   clearTimeout(pollTimer);

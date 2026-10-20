@@ -61,7 +61,8 @@ async function tokenRequest(params) {
     body: new URLSearchParams(params),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error_description || j.error || ('HTTP ' + r.status));
+  // Spotify refused the login itself (e.g. revoked or expired): mark it, so it isn't mistaken for a network problem.
+  if (!r.ok) throw Object.assign(new Error(j.error_description || j.error || ('HTTP ' + r.status)), { refused: true });
   state.tok = {
     access: j.access_token,
     refresh: j.refresh_token || state.tok?.refresh,
@@ -89,28 +90,59 @@ export const usingDefaultApp = () => state.clientId === DEFAULT_CLIENT_ID;
 /* ---------- Web API ---------- */
 
 /** A Spotify access token that is valid for at least another minute, or null if logged out. */
+/**
+ * A Spotify access token that is valid for at least another minute.
+ * Returns null if logged out; throws { network: true } if the renewal couldn't reach Spotify.
+ */
 export async function freshToken() {
   if (!state.tok) return null;
-  if (Date.now() > state.tok.exp - 60000) {
-    try { await refreshToken(); } catch { logout(); return null; }
-  }
-  return state.tok.access;
+  if (Date.now() > state.tok.exp - 60000) await renewOrLogout();
+  return state.tok?.access || null;
 }
 
-export async function api(method, path, body) {
-  if (!(await freshToken())) return { ok: false, status: 401, json: null };
+/** Renews the login. Only logs out if Spotify actually refused it, never because of a network blip. */
+async function renewOrLogout() {
   try {
-    const send = () => fetch(API + path, {
-      method,
-      headers: { Authorization: 'Bearer ' + state.tok.access, ...(body ? { 'Content-Type': 'application/json' } : {}) },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    let r = await send();
-    if (r.status === 401) { await refreshToken(); r = await send(); }
+    await refreshToken();
+  } catch (e) {
+    if (!e.refused) throw Object.assign(new Error('network'), { network: true });
+    logout();
+    emit('toast', 'Your Spotify login has expired. Please log in again.');
+  }
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+export async function api(method, path, body) {
+  const NO_ANSWER = { ok: false, status: 0, json: null };
+  try {
+    if (!(await freshToken())) return { ok: false, status: 401, json: null };
+  } catch {
+    emit('noanswer', path);
+    return NO_ANSWER;
+  }
+  const send = () => fetch(API + path, {
+    method,
+    headers: { Authorization: 'Bearer ' + state.tok.access, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  // iPhones often drop an idle connection; the first request afterwards fails even though the
+  // internet is fine. So a request that gets no answer at all is tried once more.
+  const sendWithRetry = async () => {
+    try { return await send(); } catch { await sleep(300); return send(); }
+  };
+  try {
+    let r = await sendWithRetry();
+    if (r.status === 401) {
+      await renewOrLogout();
+      if (!state.tok) return { ok: false, status: 401, json: null };
+      r = await sendWithRetry();
+    }
     const json = r.status === 204 ? null : await r.json().catch(() => null);
     return { ok: r.ok, status: r.status, json };
   } catch {
-    return { ok: false, status: 0, json: null };
+    emit('noanswer', path);
+    return NO_ANSWER;
   }
 }
 
@@ -161,7 +193,7 @@ export function notRegisteredMessage() {
 
 export function explain(res) {
   const reason = errorReason(res);
-  if (res.status === 0) return 'No connection to Spotify.';
+  if (res.status === 0) return 'Spotify did not answer. Check the phone\'s internet connection and try again.';
   if (res.status === 404) return 'Spotify not responding. Make sure the app is open in the background and try to play a song on it.';
   if (res.status === 403 && /PREMIUM/i.test(reason)) return 'Spotify needs a Premium account for remote control.';
   if (res.status === 403 && /regist|dashboard/i.test(reason)) return notRegisteredMessage();

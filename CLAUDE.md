@@ -96,6 +96,9 @@ Set it to `''` to go back to phone-only. Details in the comment at the top of `j
 - Latency: a press is ~0.5–2 s (network). With keep-awake off, the last song is left paused at its
   start ("cue"), so pressing that button again is a faster plain resume.
 - Storage is per browser: Safari and the home-screen icon on iPhone have separate storage.
+- iPhones drop idle connections, so `api()` retries a request once if it gets no answer at all. A failed
+  login renewal only logs out when Spotify refuses it (`refused`), never on a network blip. A press with
+  no answer emits `noanswer`, and devices.js re-checks the status light at once.
 
 ## Conventions
 

@@ -147,6 +147,45 @@ try {
     await page.close();
   }
 
+  console.log('Dropped connections and login renewal');
+  {
+    // 1. The first try gets no answer (like an iPhone's dropped idle connection); the second works.
+    const { page, calls, errors } = await openApp(browser);
+    let dropped = 0;
+    await page.route('https://api.spotify.com/v1/me/player/play**', route => (dropped++ === 0 ? route.abort('connectionreset') : route.fallback()));
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForTimeout(800);
+    check('a dropped connection is retried and the song plays', !!lastPlay(calls) && await page.locator('#grid .pad.playing').count() === 1);
+    check('no error message after a successful retry', !(await page.isVisible('#toast')) || (await page.textContent('#toast')).length === 0 || !/answer|connection/i.test(await page.textContent('#toast')));
+
+    // 2. Spotify doesn't answer at all: clear message, and the light is re-checked straight away.
+    await page.click('#stopBtn'); await page.waitForTimeout(300);
+    await page.unroute('https://api.spotify.com/v1/me/player/play**');
+    await page.route('https://api.spotify.com/v1/me/player/play**', route => route.abort('internetdisconnected'));
+    const checksBefore = calls.filter(c => c.path === '/me/player/devices').length;
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForTimeout(1500);
+    check('no answer at all gives a clear message', /did not answer/.test(await page.textContent('#toast')));
+    check('the light is re-checked after a failed press', calls.filter(c => c.path === '/me/player/devices').length > checksBefore);
+    check('no JS errors', !errors.length, errors.join(' | '));
+    await page.close();
+  }
+  {
+    // 3. Login renewal can't reach Spotify: stay logged in.
+    const expired = { 'gmr-tok': JSON.stringify({ access: 'old', refresh: 'r1', exp: Date.now() - 1000 }) };
+    const { page } = await openApp(browser, { storage: expired, setup: p => p.route('https://accounts.spotify.com/api/token', r => r.abort('internetdisconnected')) });
+    check('a network blip during login renewal does not log out', await page.isVisible('#main') && !(await page.isVisible('#setup')));
+    await page.close();
+  }
+  {
+    // 4. Spotify refuses the renewal (login revoked): log out with a clear message.
+    const expired = { 'gmr-tok': JSON.stringify({ access: 'old', refresh: 'r1', exp: Date.now() - 1000 }) };
+    const { page } = await openApp(browser, { storage: expired, setup: p => p.route('https://accounts.spotify.com/api/token', r => r.fulfill({ status: 400, contentType: 'application/json', body: '{"error":"invalid_grant","error_description":"Refresh token revoked"}' })) });
+    check('a refused renewal shows the login screen', await page.isVisible('#setup'));
+    check('and says the login expired', /login has expired/.test(await page.textContent('#toast')));
+    await page.close();
+  }
+
   console.log('Account not added to the app (403)');
   {
     const { page, errors } = await openApp(browser, { devicesStatus: 403 });

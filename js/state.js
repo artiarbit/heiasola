@@ -14,6 +14,7 @@
 //   'toast'  (text, kind)  show a message; kind 'info' = neutral, otherwise error
 //   'saved'                the buttons were saved on the phone (cloud.js uploads them)
 //   'cloud'                online storage status changed (see cloud.js)
+//   'noanswer' (path)      a request to Spotify got no answer at all (devices.js re-checks the light)
 
 import { store } from './store.js';
 import { DEFAULT_CLIENT_ID, PERSONAL_DEVICE, SILENT_TRACK } from './config.js';
