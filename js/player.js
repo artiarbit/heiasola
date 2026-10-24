@@ -300,7 +300,11 @@ export async function listenFrom(uri, ms) {
   state.current = null;
   state.cue = null;
   emit('playing');
-  const r = await spotify.play(uri, ms);
+  logPress('Edit: play song');
+  // Album form first, like the buttons: the single-song form can leave an iPhone stuck.
+  const album = await albumUri(uri);
+  const r = album ? await send('play from ' + fmtShort(ms) + ', as part of its album', () => spotify.playInAlbum(album, uri, ms))
+    : await send('play from ' + fmtShort(ms), () => spotify.play(uri, ms));
   if (!r.ok) toast(explain(r));
 }
 

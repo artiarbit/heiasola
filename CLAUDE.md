@@ -113,7 +113,7 @@ Set it to `''` to go back to phone-only. Details in the comment at the top of `j
   "no song, paused at 0:00" with pausing/resuming/skipping/transferring all disallowed, also after a
   second play; once 502 then 404 Device not found. Speakers work with the same commands.
   The album form (`playInAlbum`: album as context, song as offset) played on his iPhone, so it is the
-  FIRST command (also for the silent track in `idle()`); album ids come from `GET /tracks/{id}`, cached in memory and prefetched after login. Every step is written to the press log
+  FIRST command (also for the silent track in `idle()` and the editor's "Play song", `listenFrom`); album ids come from `GET /tracks/{id}`, cached in memory and prefetched after login. Every step is written to the press log
   (Settings → "What Spotify said"); ask Ørjan for a screenshot of it when playback misbehaves. Clip plays skip
   `api()`'s 502 retry (`retryGateway: false`): two commands back to back can leave the phone stopped,
   so the check comes first. The fake Spotify in `tests/helpers.mjs` keeps a player state

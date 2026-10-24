@@ -79,6 +79,9 @@ try {
     await page.click('[data-e="0.05"]');
     check('start moves by 1 s', (await page.textContent('#edStart')) === '0:01.00');
     check('end stays put when start moves, then moves by 0.05 s', (await page.textContent('#edEnd')) === '0:06.05');
+    await page.click('#edListen'); await page.waitForTimeout(400);
+    const l = lastPlay(calls);
+    check('"Play song" in the editor plays the song as part of its album, from the start point', l?.song === NEW_SONG.uri && !!l.body.context_uri && l.body.position_ms === 1000, JSON.stringify(l?.body));
     await page.click('#edSave');
     const clips = await stored(page);
     const added = clips.find(c => c.uri === NEW_SONG.uri);
