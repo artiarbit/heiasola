@@ -20,7 +20,7 @@
 
 import { store } from './store.js';
 import { DEFAULT_CLIENT_ID, PERSONAL_DEVICE, SILENT_TRACK } from './config.js';
-import { DEFAULT_CLIPS } from './defaults.js';
+import { DEFAULT_CLIPS, TIMINGS_VERSION } from './defaults.js';
 
 const listeners = new Map();
 export function on(event, fn) {
@@ -92,6 +92,35 @@ export function loadDefaults() {
 /** First run on this browser: start with the Heia Sola! defaults. */
 export function ensureClips() {
   if (!store.has('clips')) loadDefaults();
+}
+
+/** The club button for one of the person's buttons: same song and kind (special or not), same id preferred. */
+function clubMatch(c) {
+  const same = DEFAULT_CLIPS.filter(d => d.uri === c.uri && !!d.special === !!c.special);
+  return same.find(d => d.id === c.id) || (same.length === 1 ? same[0] : null);
+}
+
+/**
+ * Once per TIMINGS_VERSION: gives the person's buttons the club's start, length and fade for the songs
+ * they share with the defaults. Their own songs, names, colours, pins and Random choices stay.
+ * Called after online storage has synced, so the change is uploaded like any other edit.
+ */
+export function applyClubTimings() {
+  if (store.get('timingsSeen', '') === TIMINGS_VERSION || !state.clips.length) return 0;
+  let changed = 0;
+  for (const c of state.clips) {
+    const d = clubMatch(c);
+    if (!d || (c.start === d.start && c.dur === d.dur && c.fade === d.fade)) continue;
+    Object.assign(c, { start: d.start, dur: d.dur, fade: d.fade });
+    changed++;
+  }
+  store.set('timingsSeen', TIMINGS_VERSION);
+  if (changed) {
+    state.cue = null;
+    saveClips();
+    toast(`Updated the start and end times of ${changed} song${changed > 1 ? 's' : ''} to the club's.`, 'info');
+  }
+  return changed;
 }
 
 export function saveDevice(d) {

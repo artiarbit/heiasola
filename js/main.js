@@ -1,6 +1,6 @@
 // Entry point: wires up the screens and starts the app.
 
-import { state, on, emit, ensureClips } from './state.js';
+import { state, on, emit, ensureClips, applyClubTimings } from './state.js';
 import { store } from './store.js';
 import { finishLogin } from './spotify.js';
 import { refreshDevices } from './devices.js';
@@ -38,7 +38,7 @@ function onLoginChange() {
   showScreen();
   if (!state.tok) return;
   ensureClips();
-  syncCloud();
+  syncCloud().then(applyClubTimings);  // after the online list is in, so the update is uploaded
   refreshDevices();
   resolveSilent();
   setTimeout(prefetchAlbums, 1500);  // after the first checks, so they aren't slowed down

@@ -66,6 +66,10 @@ on older phones and are ignored. Never rename keys or change field meanings with
 
 Ørjan sends a backup (⚙︎ → Backup → Copy). Replace the array in `js/defaults.js` with it, one button
 per line. New phones get it on first login; existing phones only via ⚙︎ → Reset to Heia Sola! defaults.
+To also push the **timings** (start, length, fade) to existing phones, bump `TIMINGS_VERSION` in
+`defaults.js`: once per version, after the online sync, `applyClubTimings()` (state.js) sets those on
+the person's buttons for the same song (same uri and kind; same id preferred), keeps everything else,
+adds nothing, and uploads. Key `gmr-timingsSeen`. Last pushed: 2026-10-24 (31 buttons).
 
 ## Online storage (Cloudflare Worker + KV)
 

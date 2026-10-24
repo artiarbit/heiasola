@@ -180,6 +180,27 @@ try {
     await page.close();
   }
 
+  console.log('Club timings pushed to existing phones');
+  {
+    const mine = [
+      { id: 'p0', name: 'Golden!!', color: '#FF0000', uri: 'spotify:track:1CPZ5BxNNd0n0nF4Orb9JS', trackName: 'Golden', artist: 'x', art: '', trackDur: 194607, start: 1000, dur: 5, fade: 0, pinned: true },
+      { id: 'x1', name: 'My Song', color: '#FFD400', uri: 'spotify:track:mine', trackName: 'Mine', artist: 'Me', art: '', trackDur: 100000, start: 5000, dur: 8, fade: 2 },
+    ];
+    const { page, errors } = await openApp(browser, { storage: { ...LOGGED_IN, 'gmr-clips': JSON.stringify(mine) } });
+    let list = await stored(page);
+    const g = list.find(c => c.id === 'p0'), own = list.find(c => c.id === 'x1');
+    check('a club song gets the club start, length and fade', g.start === 61600 && g.dur === 7.1 && g.fade === 2, JSON.stringify(g));
+    check('its name, colour and pin stay', g.name === 'Golden!!' && g.color === '#FF0000' && g.pinned === true);
+    check('own songs are untouched and nothing is added', own.start === 5000 && own.dur === 8 && list.length === 2);
+    check('a short message says what changed', /Updated the start and end times of 1 song/.test(await page.textContent('#toast')));
+    await page.evaluate(() => { const l = JSON.parse(localStorage.getItem('gmr-clips')); l[0].start = 2000; localStorage.setItem('gmr-clips', JSON.stringify(l)); });
+    await page.reload(); await page.waitForTimeout(500);
+    list = await stored(page);
+    check('only once: a later change of your own is kept', list.find(c => c.id === 'p0').start === 2000);
+    check('no JS errors', !errors.length, errors.join(' | '));
+    await page.close();
+  }
+
   console.log('Dropped connections and login renewal');
   {
     // 1. The first try gets no answer (like an iPhone's dropped idle connection); the second works.
