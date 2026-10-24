@@ -99,6 +99,9 @@ Set it to `''` to go back to phone-only. Details in the comment at the top of `j
 - iPhones drop idle connections, so `api()` retries a request once if it gets no answer at all. A failed
   login renewal only logs out when Spotify refuses it (`refused`), never on a network blip. A press with
   no answer emits `noanswer`, and devices.js re-checks the status light at once.
+- Spotify answers **502/503/504** on play when its servers can't reach the Spotify app on the phone in
+  time (usually asleep in the background). `api()` retries once after 0.7 s; if it still fails, the
+  user sees the "make sure the app is open" message (same as 404), never "Bad gateway".
 
 ## Conventions
 

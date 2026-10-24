@@ -138,6 +138,13 @@ export async function api(method, path, body) {
       if (!state.tok) return { ok: false, status: 401, json: null };
       r = await sendWithRetry();
     }
+    // 502/503/504: Spotify's servers couldn't reach the Spotify app on the phone in time (often asleep
+    // in the background) or had a hiccup. The first attempt usually wakes the app, so try once more.
+    if (r.status >= 502 && r.status <= 504) {
+      await sleep(700);
+      r = await sendWithRetry();
+      if (r.status >= 502 && r.status <= 504) emit('noanswer', path);  // re-check the light
+    }
     const json = r.status === 204 ? null : await r.json().catch(() => null);
     return { ok: r.ok, status: r.status, json };
   } catch {
@@ -194,7 +201,7 @@ export function notRegisteredMessage() {
 export function explain(res) {
   const reason = errorReason(res);
   if (res.status === 0) return 'Spotify did not answer. Check the phone\'s internet connection and try again.';
-  if (res.status === 404) return 'Spotify not responding. Make sure the app is open in the background and try to play a song on it.';
+  if (res.status === 404 || (res.status >= 502 && res.status <= 504)) return 'Spotify not responding. Make sure the app is open in the background and try to play a song on it.';
   if (res.status === 403 && /PREMIUM/i.test(reason)) return 'Spotify needs a Premium account for remote control.';
   if (res.status === 403 && /regist|dashboard/i.test(reason)) return notRegisteredMessage();
   if (res.status === 403) return 'Spotify refused this (' + reason + '). If the device is an iPhone, volume changes are not allowed.';

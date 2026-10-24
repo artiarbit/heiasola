@@ -171,6 +171,26 @@ try {
     await page.close();
   }
   {
+    // Spotify answers 502 (couldn't reach the phone's Spotify app in time): retried, then a clear message.
+    const { page, calls, errors } = await openApp(browser);
+    let n = 0;
+    await page.route('https://api.spotify.com/v1/me/player/play**', route => (n++ === 0
+      ? route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":{"status":502,"message":"Bad gateway."}}' })
+      : route.fallback()));
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForTimeout(1500);
+    check('a single 502 from Spotify is retried and the song plays', await page.locator('#grid .pad.playing').count() === 1);
+    await page.click('#stopBtn'); await page.waitForTimeout(300);
+    await page.unroute('https://api.spotify.com/v1/me/player/play**');
+    await page.route('https://api.spotify.com/v1/me/player/play**', route => route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":{"status":502,"message":"Bad gateway."}}' }));
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForTimeout(2000);
+    const msg = await page.textContent('#toast');
+    check('repeated 502 gives the "make sure the app is open" message, not "Bad gateway"', /Make sure the app is open/.test(msg) && !/502|gateway/i.test(msg), msg);
+    check('no JS errors', !errors.length, errors.join(' | '));
+    await page.close();
+  }
+  {
     // 3. Login renewal can't reach Spotify: stay logged in.
     const expired = { 'gmr-tok': JSON.stringify({ access: 'old', refresh: 'r1', exp: Date.now() - 1000 }) };
     const { page } = await openApp(browser, { storage: expired, setup: p => p.route('https://accounts.spotify.com/api/token', r => r.abort('internetdisconnected')) });
