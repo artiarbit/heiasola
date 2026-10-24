@@ -112,8 +112,13 @@ async function renewOrLogout() {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+export const isGatewayError = r => r.status >= 502 && r.status <= 504;
 
-export async function api(method, path, body) {
+/**
+ * Calls the Spotify Web API. `retryGateway: false` skips the automatic second try on 502–504, for
+ * callers that check what happened before asking again (see player.js → confirmStarted).
+ */
+export async function api(method, path, body, { retryGateway = true } = {}) {
   const NO_ANSWER = { ok: false, status: 0, json: null };
   try {
     if (!(await freshToken())) return { ok: false, status: 401, json: null };
@@ -140,11 +145,11 @@ export async function api(method, path, body) {
     }
     // 502/503/504: Spotify's servers couldn't reach the Spotify app on the phone in time (often asleep
     // in the background) or had a hiccup. The first attempt usually wakes the app, so try once more.
-    if (r.status >= 502 && r.status <= 504) {
+    if (isGatewayError(r) && retryGateway) {
       await sleep(700);
       r = await sendWithRetry();
-      if (r.status >= 502 && r.status <= 504) emit('noanswer', path);  // re-check the light
     }
+    if (isGatewayError(r)) emit('noanswer', path);  // re-check the light
     const json = r.status === 204 ? null : await r.json().catch(() => null);
     return { ok: r.ok, status: r.status, json };
   } catch {
@@ -162,14 +167,16 @@ function withDevice(path) {
 export const spotify = {
   devices: () => api('GET', '/me/player/devices'),
   /** play(uri, ms) starts a song at a position; play() with no song resumes. */
-  play: (uri, positionMs) => api('PUT', withDevice('/me/player/play'),
-    uri ? { uris: [uri], ...(positionMs != null ? { position_ms: Math.round(positionMs) } : {}) } : undefined),
+  play: (uri, positionMs, opts) => api('PUT', withDevice('/me/player/play'),
+    uri ? { uris: [uri], ...(positionMs != null ? { position_ms: Math.round(positionMs) } : {}) } : undefined, opts),
   pause: () => api('PUT', withDevice('/me/player/pause')),
   seek: ms => api('PUT', withDevice('/me/player/seek?position_ms=' + Math.round(ms))),
   volume: pct => api('PUT', withDevice('/me/player/volume?volume_percent=' + Math.round(pct))),
   repeatTrack: () => api('PUT', withDevice('/me/player/repeat?state=track')),
   transferTo: deviceId => api('PUT', '/me/player', { device_ids: [deviceId], play: false }),
   nowPlaying: () => api('GET', '/me/player/currently-playing'),
+  /** What the account's player is doing: song, playing or not, device. market= fills in linked_from. */
+  player: () => api('GET', '/me/player?market=from_token'),
   search: q => api('GET', '/search?type=track&limit=10&q=' + encodeURIComponent(q)),  // Spotify's max is 10
   track: id => api('GET', '/tracks/' + id),
 };
@@ -201,7 +208,7 @@ export function notRegisteredMessage() {
 export function explain(res) {
   const reason = errorReason(res);
   if (res.status === 0) return 'Spotify did not answer. Check the phone\'s internet connection and try again.';
-  if (res.status === 404 || (res.status >= 502 && res.status <= 504)) return 'Spotify not responding. Make sure the app is open in the background and try to play a song on it.';
+  if (res.status === 404 || isGatewayError(res)) return 'Spotify not responding. Make sure the app is open in the background and try to play a song on it.';
   if (res.status === 403 && /PREMIUM/i.test(reason)) return 'Spotify needs a Premium account for remote control.';
   if (res.status === 403 && /regist|dashboard/i.test(reason)) return notRegisteredMessage();
   if (res.status === 403) return 'Spotify refused this (' + reason + '). If the device is an iPhone, volume changes are not allowed.';

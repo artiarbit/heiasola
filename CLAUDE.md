@@ -102,6 +102,13 @@ Set it to `''` to go back to phone-only. Details in the comment at the top of `j
 - Spotify answers **502/503/504** on play when its servers can't reach the Spotify app on the phone in
   time (usually asleep in the background). `api()` retries once after 0.7 s; if it still fails, the
   user sees the "make sure the app is open" message (same as 404), never "Bad gateway".
+- A play command can get **204 (or 502) and the phone still doesn't play**: it stops the music that
+  was playing and goes quiet (reported on iPhone with other music playing). So `playClip` shows the
+  clip at once, then checks `GET /me/player` (after `TIMING.confirmWaits`); if the song isn't playing
+  it sends the command once more, and after a second failure shows a message. Clip plays skip
+  `api()`'s 502 retry (`retryGateway: false`): two commands back to back can leave the phone stopped,
+  so the check comes first. The fake Spotify in `tests/helpers.mjs` keeps a player state
+  (`calls.player`) and can act this out (`calls.ignorePlays`).
 
 ## Conventions
 

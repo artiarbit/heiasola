@@ -178,18 +178,83 @@ try {
       ? route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":{"status":502,"message":"Bad gateway."}}' })
       : route.fallback()));
     await page.click('#grid .pad[data-id]:first-child');
-    await page.waitForTimeout(1500);
-    check('a single 502 from Spotify is retried and the song plays', await page.locator('#grid .pad.playing').count() === 1);
+    await page.waitForTimeout(3000);
+    check('a single 502 from Spotify is retried and the song plays', await page.locator('#grid .pad.playing').count() === 1 && calls.player.playing);
     await page.click('#stopBtn'); await page.waitForTimeout(300);
     await page.unroute('https://api.spotify.com/v1/me/player/play**');
     await page.route('https://api.spotify.com/v1/me/player/play**', route => route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":{"status":502,"message":"Bad gateway."}}' }));
     await page.click('#grid .pad[data-id]:first-child');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('#toast:not([hidden])', { timeout: 6000 });
     const msg = await page.textContent('#toast');
     check('repeated 502 gives the "make sure the app is open" message, not "Bad gateway"', /Make sure the app is open/.test(msg) && !/502|gateway/i.test(msg), msg);
     check('no JS errors', !errors.length, errors.join(' | '));
     await page.close();
   }
+  {
+    // 502, but the phone did start the song: the app looks first and doesn't send it twice
+    // (two commands right after each other can leave an iPhone stopped).
+    const { page, calls, errors } = await openApp(browser);
+    const first = (await stored(page)).find(c => !c.special);
+    let n = 0;
+    await page.route('https://api.spotify.com/v1/me/player/play**', route => {
+      if (n++ > 0) return route.fallback();
+      Object.assign(calls.player, { uri: route.request().postDataJSON().uris[0], playing: true });
+      return route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":{"status":502,"message":"Bad gateway."}}' });
+    });
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForTimeout(2500);
+    check('a 502 where the phone played anyway is not sent twice', n === 1, n + ' commands');
+    check('and the button shows playing, no message', await page.locator('#grid .pad.playing').count() === 1 && await page.isHidden('#toast'));
+    check('no JS errors', !errors.length, errors.join(' | '));
+    await page.close();
+  }
+
+  console.log('Phone stops the music but does not start the song');
+  {
+    const { page, calls, errors } = await openApp(browser);
+    const first = (await stored(page)).find(c => !c.special);
+    const playsOf = uri => calls.filter(c => c.path === '/me/player/play' && c.body?.uris?.[0] === uri).length;
+    const looks = () => calls.filter(c => c.path === '/me/player' && c.method === 'GET').length;
+
+    // A normal press: one command, one quick look that it started.
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForTimeout(2000);
+    check('a normal press sends the command once', playsOf(first.uri) === 1, playsOf(first.uri) + ' commands');
+    check('and looks once that it started', looks() === 1, looks() + ' looks');
+    await page.click('#stopBtn'); await page.waitForTimeout(300);
+
+    // Other music is playing; the phone stops it but doesn't start the song: the app asks once more.
+    Object.assign(calls.player, { uri: 'spotify:track:OtherMusic000000000001', playing: true });
+    calls.ignorePlays = 1;
+    let before = playsOf(first.uri);
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForTimeout(3500);
+    check('the app notices and sends the command again', playsOf(first.uri) === before + 2, (playsOf(first.uri) - before) + ' commands');
+    check('the song now plays on the phone', calls.player.uri === first.uri && calls.player.playing);
+    check('button still marked playing, no message', await page.locator('#grid .pad.playing').count() === 1 && await page.isHidden('#toast'));
+    await page.screenshot({ path: path.join(OUT, '9-asked-again.png') });
+    await page.click('#stopBtn'); await page.waitForTimeout(300);
+
+    // STOP while the app is still looking: it must not start the song again.
+    Object.assign(calls.player, { uri: 'spotify:track:OtherMusic000000000001', playing: true });
+    calls.ignorePlays = 1;
+    before = playsOf(first.uri);
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForTimeout(200);
+    await page.click('#stopBtn');
+    await page.waitForTimeout(2500);
+    check('STOP during the check: the song is not sent again', playsOf(first.uri) === before + 1, (playsOf(first.uri) - before) + ' commands');
+
+    // The phone refuses twice: a clear message instead of silence, and nothing marked playing.
+    calls.ignorePlays = 2;
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForSelector('#toast:not([hidden])', { timeout: 8000 });
+    check('two refusals give a clear message', /did not start the song/.test(await page.textContent('#toast')), await page.textContent('#toast'));
+    check('nothing marked playing after that', await page.locator('.pad.playing').count() === 0);
+    check('no JS errors', !errors.length, errors.join(' | '));
+    await page.close();
+  }
+
   {
     // 3. Login renewal can't reach Spotify: stay logged in.
     const expired = { 'gmr-tok': JSON.stringify({ access: 'old', refresh: 'r1', exp: Date.now() - 1000 }) };

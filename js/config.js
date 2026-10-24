@@ -34,6 +34,7 @@ export const TIMING = {
   pollFailing: 8000,   // after two or more failed checks in a row
   pollRefused: 30000,  // account not allowed in the app (403): no point retrying fast
   startLagMs: 300,     // Spotify starts the sound a little after accepting the command
+  confirmWaits: [600, 900],  // after a press, look this long (ms) before each check that the song really started
   fadeSteps: 5,        // volume steps in a fade-out
   stepMs: 50,          // start/end times snap to this
   minClipMs: 1000,

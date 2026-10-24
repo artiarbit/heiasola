@@ -6,7 +6,7 @@
 // of that button is a plain resume, which is the fastest thing Spotify can do.
 
 import { state, emit, saveKeepAwake, regularClips, toast } from './state.js';
-import { spotify, explain } from './spotify.js';
+import { spotify, explain, isGatewayError } from './spotify.js';
 import { SILENT_TRACK, TIMING } from './config.js';
 
 let stopTimer = null;
@@ -60,6 +60,8 @@ export function setKeepAwake(on) {
 
 /* ---------- clips ---------- */
 
+const NOT_STARTED = 'Spotify stopped the music but did not start the song. Open the Spotify app, play any song for a second, then try again.';
+
 export async function playClip(c) {
   if (!c.uri) return;
   const my = ++generation;
@@ -67,24 +69,80 @@ export async function playClip(c) {
   cancelFade = true;
   emit('busy', c.id, true);
   const t0 = performance.now();
-
-  let r = null;
-  if (state.cue && state.cue.uri === c.uri && state.cue.pos === c.start) {
-    r = await spotify.play();          // already paused at the right spot: plain resume
-    if (!r.ok) r = null;
-  }
-  r ||= await spotify.play(c.uri, c.start);
-
+  const r = await startSong(c);
   emit('busy', c.id, false);
   if (my !== generation) return;
   emit('latency', performance.now() - t0, 'play');
   state.cue = null;
-  if (!r.ok) { toast(explain(r)); state.current = null; emit('playing'); return; }
+  // 502–504 means Spotify gave up waiting for the phone, but the phone often plays the song anyway.
+  if (!r.ok && !isGatewayError(r)) return failed(explain(r));
 
+  showPlaying(c, my);
+  if ((await confirmStarted(c, my)) !== false) return;
+
+  // The phone isn't playing the song: ask once more, from the start of the clip.
+  const again = await spotify.play(c.uri, c.start);
+  if (!stillOn(c, my)) return;
+  if (!again.ok) return failed(explain(again));
+  showPlaying(c, my);
+  if ((await confirmStarted(c, my)) === false) failed(NOT_STARTED);
+}
+
+/** Sends the play command: a plain resume if the song is already waiting at the start point. */
+async function startSong(c) {
+  if (state.cue && state.cue.uri === c.uri && state.cue.pos === c.start) {
+    const r = await spotify.play();
+    if (r.ok) return r;
+  }
+  // No automatic second try on 502–504 here: two commands right after each other can leave the
+  // phone stopped. confirmStarted() looks at what the phone is doing first, and only then asks again.
+  return spotify.play(c.uri, c.start, { retryGateway: false });
+}
+
+/** Marks the clip as playing and (re)starts its countdown and timed stop. */
+function showPlaying(c, my) {
+  clearTimeout(stopTimer);
+  if (state.current) { state.current = null; emit('playing'); }  // so a second try restarts the progress bar
   state.current = { id: c.id, name: c.name, dur: c.dur, t0: performance.now() };
   emit('playing');
   const fadeMs = canFade(c) ? c.fade * 1000 : 0;
   stopTimer = setTimeout(() => endClip(c, my), c.dur * 1000 + TIMING.startLagMs - fadeMs);
+}
+
+function failed(message) {
+  clearTimeout(stopTimer);
+  state.current = null;
+  emit('playing');
+  toast(message);
+}
+
+/** This clip is still the thing playing: no newer press, no STOP, and its end hasn't started. */
+const stillOn = (c, my) => my === generation && state.current?.id === c.id && !state.fading;
+
+/** Is Spotify playing this song right now? true / false, or null if Spotify didn't say. */
+async function playingSong(uri) {
+  const r = await spotify.player();
+  if (r.status === 204) return false;  // nothing playing at all
+  if (!r.ok || !r.json) return null;
+  const item = r.json.item;
+  return !!(r.json.is_playing && item && (item.uri === uri || item.linked_from?.uri === uri));
+}
+
+/**
+ * Spotify sometimes accepts a play command and the phone still doesn't start the song: it stops what
+ * was playing and goes quiet. Seen on iPhones when other music was playing. So look what the phone is
+ * doing (Spotify's report lags a little, hence a second look before giving up).
+ * Returns true (playing), false (not playing), or null (can't tell, or the clip is no longer current).
+ */
+async function confirmStarted(c, my) {
+  for (const wait of TIMING.confirmWaits) {
+    await sleep(wait);
+    if (!stillOn(c, my)) return null;
+    const on = await playingSong(c.uri);
+    if (!stillOn(c, my) || on === null) return null;
+    if (on) return true;
+  }
+  return false;
 }
 
 async function endClip(c, my) {
