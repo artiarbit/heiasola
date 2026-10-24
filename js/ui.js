@@ -2,7 +2,7 @@
 
 import { state, on, specialClips, pinnedClips, numberedClips, saveClips, toast } from './state.js';
 import { $, el, fmtShort } from './dom.js';
-import { playClip, playRandom, stopNow } from './player.js';
+import { playClip, playRandom, stopNow, playHalftime, HALFTIME_ID } from './player.js';
 import { openEditor } from './editor.js';
 import { openSettings } from './settings.js';
 
@@ -134,6 +134,17 @@ function renderPlaying() {
     if (!on) { delete p.dataset.anim; bar.style.transition = 'none'; bar.style.transform = 'scaleX(0)'; }
   });
   $('nowT').textContent = cur ? cur.name : '–';
+  $('htBtn').classList.toggle('playing', cur?.id === HALFTIME_ID);
+}
+
+function renderHalftime() {
+  $('htSub').textContent = state.halftime ? state.halftime.name + ' · plays until STOP' : 'Choose a playlist in ⚙︎ Settings';
+}
+
+/** Plays the halftime playlist, or opens Settings if none is chosen yet. */
+async function onHalftimeTap() {
+  if (!state.halftime) { openSettings(); $('htLink').focus(); return; }
+  playHalftime();
 }
 
 /* ---------- countdowns (button badge + Random button) ---------- */
@@ -193,7 +204,10 @@ export function showScreen() {
 export function initUI() {
   on('clips', renderButtons);
   on('playing', renderPlaying);
-  on('busy', (id, busy) => document.querySelector(`.pad[data-id="${id}"]`)?.classList.toggle('busy', busy));
+  on('busy', (id, busy) => (id === HALFTIME_ID ? $('htBtn') : document.querySelector(`.pad[data-id="${id}"]`))?.classList.toggle('busy', busy));
+  on('halftime', renderHalftime);
+  renderHalftime();
+  $('htBtn').addEventListener('click', onHalftimeTap);
   on('random', id => {
     randomId = id;
     const b = $('rndBtn');

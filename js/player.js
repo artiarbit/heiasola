@@ -278,6 +278,38 @@ export async function stopNow() {
   if (was && !state.ka.on) recue(was, my);
 }
 
+/* ---------- halftime and timeout music ---------- */
+
+export const HALFTIME_ID = '__halftime';
+
+/**
+ * Plays the chosen playlist from a random song and lets it run until STOP. Spotify no longer lets this
+ * app read the songs of other people's playlists (Feb 2026), so the app starts the playlist itself:
+ * at a random position when the size is known, otherwise with shuffle on. Playing a playlist is the
+ * same "context" form as the album form, which works on iPhones.
+ */
+export async function playHalftime() {
+  const pl = state.halftime;
+  if (!pl?.uri) { toast('Choose a playlist for halftime music under ⚙︎ Settings.', 'info'); return false; }
+  const my = ++generation;
+  clearTimeout(stopTimer);
+  cancelFade = true;
+  state.cue = null;
+  logPress('Halftime music');
+  emit('busy', HALFTIME_ID, true);
+  const offset = pl.total > 0 ? { position: Math.floor(Math.random() * pl.total) } : null;
+  await send('shuffle on', () => spotify.shuffle(true));
+  const r = await send('play “' + pl.name + '”' + (offset ? ' from song ' + (offset.position + 1) + ' of ' + pl.total : ', shuffled'),
+    () => spotify.playContext(pl.uri, offset));
+  emit('busy', HALFTIME_ID, false);
+  if (my !== generation) return true;
+  if (!r.ok) { failed(explain(r)); return true; }
+  state.current = { id: HALFTIME_ID, name: 'Halftime music', dur: null, t0: performance.now() };
+  emit('playing');
+  send('repeat off (keep-awake had set repeat one song)', () => spotify.repeat('context'));
+  return true;
+}
+
 /* ---------- Random ---------- */
 
 let lastRandom = null;

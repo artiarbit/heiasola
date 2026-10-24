@@ -15,6 +15,7 @@
 //   'saved'                the buttons were saved on the phone (cloud.js uploads them)
 //   'cloud'                online storage status changed (see cloud.js)
 //   'noanswer' (path)      a request to Spotify got no answer at all (devices.js re-checks the light)
+//   'halftime'             the halftime/timeout playlist changed
 //   'presslog'             a line was added to the press log (presslog.js; shown in Settings)
 
 import { store } from './store.js';
@@ -54,6 +55,7 @@ export const state = {
   devices: [],                        // latest list from Spotify
   clips: store.get('clips', []),      // the buttons (see CLAUDE.md → "Button data")
   ka: loadKeepAwake(),                // keep Spotify awake: { on, uri, name }
+  halftime: store.get('halftime', null),  // playlist for the halftime/timeout button: { uri, name, total }
   current: null,                      // clip playing now: { id, name, dur, t0 }
   cue: null,                          // song paused at a button's start point: { uri, pos }
   fading: false,
@@ -96,6 +98,12 @@ export function saveDevice(d) {
   state.device = d;
   store.set('device', d);
   emit('devices');
+}
+
+export function saveHalftime(pl) {
+  state.halftime = pl;
+  if (pl) store.set('halftime', pl); else store.del('halftime');
+  emit('halftime');
 }
 
 export function saveKeepAwake() {

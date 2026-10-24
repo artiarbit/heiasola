@@ -172,6 +172,13 @@ export const spotify = {
   /** Plays a song as part of its album (the form the Spotify app itself uses when you tap a song). */
   playInAlbum: (albumUri, uri, positionMs, opts) => api('PUT', withDevice('/me/player/play'),
     { context_uri: albumUri, offset: { uri }, position_ms: Math.round(positionMs) }, opts),
+  /** Plays a playlist (or album); offset { position } picks the song to start with. */
+  playContext: (contextUri, offset) => api('PUT', withDevice('/me/player/play'),
+    { context_uri: contextUri, ...(offset ? { offset } : {}) }),
+  shuffle: on => api('PUT', withDevice('/me/player/shuffle?state=' + !!on)),
+  repeat: mode => api('PUT', withDevice('/me/player/repeat?state=' + mode)),   // 'track' | 'context' | 'off'
+  /** Name and size of a playlist. Since Feb 2026 Spotify only gives the size for the user's own playlists. */
+  playlist: id => api('GET', '/playlists/' + id),
   pause: () => api('PUT', withDevice('/me/player/pause')),
   seek: ms => api('PUT', withDevice('/me/player/seek?position_ms=' + Math.round(ms))),
   volume: pct => api('PUT', withDevice('/me/player/volume?volume_percent=' + Math.round(pct))),

@@ -141,6 +141,19 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .pad.special.playing .prog { background: var(--ink); }
 
 /* ---------- now-playing bar ---------- */
+/* Halftime & timeout button (bottom of the main screen) */
+.half {
+  width: 100%; min-height: 64px; padding: 10px 16px; border: 0; border-radius: 18px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: var(--ink); color: var(--led); box-shadow: inset 0 0 0 2px var(--led), 0 8px 20px rgba(0,0,0,.5);
+  font-family: var(--display); font-weight: 800; font-style: italic; text-transform: uppercase; transition: transform .08s;
+}
+.half:active { transform: scale(.98); }
+.half-t { font-size: 20px; letter-spacing: .04em; white-space: nowrap; }
+.half-s { font-family: inherit; font-style: normal; font-weight: 600; font-size: 12px; letter-spacing: .06em; opacity: .75; text-transform: none; }
+.half.playing { background: var(--led); color: var(--ink); box-shadow: 0 0 22px color-mix(in srgb, var(--led), transparent 50%); }
+.half.busy { opacity: .6; }
+
 .bar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
   background: rgba(10,10,10,.95); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-top: 1px solid var(--line);

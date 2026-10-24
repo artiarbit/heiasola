@@ -64,6 +64,7 @@ export function fakeSpotify(page, { devicesStatus = 200 } = {}) {
       }
       return route.fulfill({ status: 204 });
     }
+    if (p.startsWith('/playlists/')) return route.fulfill({ json: { name: 'Halftime Mix', items: { total: 20 } } });
     if (p.startsWith('/tracks/')) return route.fulfill({ json: { uri: 'spotify:track:' + p.split('/')[2], name: 'x', album: { uri: 'spotify:album:TestAlbum', images: [] }, artists: [] } });
     if (p === '/me/player/pause') { player.playing = false; return route.fulfill({ status: 204 }); }
     if (p === '/me/player' && req.method() === 'GET') {

@@ -56,7 +56,7 @@ Screen modules only touch the DOM inside `init*()` functions or handlers (avoids
   sharedAt?: 1759000000000 }  // when this person last shared it
 ```
 
-Other keys: `gmr-tok` (login), `gmr-clientId`, `gmr-device` (`chosen: true` if picked in Settings),
+Other keys: `gmr-halftime` (playlist for the Halftime & Timeout button: `{uri, name, total}`; phone only, not in online storage), `gmr-tok` (login), `gmr-clientId`, `gmr-device` (`chosen: true` if picked in Settings),
 `gmr-ka` (keep-awake `{on, uri, name}`), `gmr-cloudSeen` (newest shared song merged), `gmr-cloudDirty`
 (changes not uploaded yet), `gmr-cloudSavedAt` (time of last upload), `gmr-cloudUrl` (test-only
 override of `CLOUD_URL`: another address or `'off'`; tests set `'off'` unless testing online storage). Old keys `gmr-seeded`, `gmr-specials`, `gmr-mig` may exist
@@ -118,6 +118,15 @@ Set it to `''` to go back to phone-only. Details in the comment at the top of `j
   `api()`'s 502 retry (`retryGateway: false`): two commands back to back can leave the phone stopped,
   so the check comes first. The fake Spotify in `tests/helpers.mjs` keeps a player state
   (`calls.player`) and can act this out (`calls.ignorePlays`).
+
+## Halftime & timeout button
+
+Wide button at the bottom of the main screen (`#htBtn`, `playHalftime` in player.js). Plays the playlist
+chosen in Settings (pasted link) as a context with shuffle on and repeat set to `context`, starting at a
+random `offset.position` when the size is known, and runs until STOP (no clip timer; `state.current.id`
+is `HALFTIME_ID`, `dur: null`). Since Feb 2026 apps can't read the songs of playlists the user doesn't
+own (`GET /playlists/{id}` gives `items.total` only for their own), so the app never picks the song
+itself. Spotify-owned playlists may 404 on lookup; they are saved anyway as "Your playlist".
 
 ## Conventions
 

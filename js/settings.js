@@ -1,7 +1,7 @@
-// The Settings sheet (⚙︎): status, device, keep-awake, backup, reset to defaults, press log, log out.
+// The Settings sheet (⚙︎): status, device, keep-awake, backup, reset to defaults, halftime playlist, press log, log out.
 
-import { state, on, setClips, loadDefaults, toast } from './state.js';
-import { logout, usingDefaultApp } from './spotify.js';
+import { state, on, setClips, loadDefaults, saveHalftime, toast } from './state.js';
+import { logout, usingDefaultApp, spotify, explain } from './spotify.js';
 import { refreshDevices, chooseDevice, makeActive } from './devices.js';
 import { resolveSilent, isResolvingSilent, setKeepAwake } from './player.js';
 import { SILENT_TRACK, OWNER } from './config.js';
@@ -18,6 +18,7 @@ export function openSettings() {
   renderDevices();
   renderCloud();
   renderLog();
+  renderHalftime();
   if (cloudEnabled() && cloud.status !== 'syncing') sync();
   $('setScrim').hidden = false;
   refreshDevices();
@@ -51,6 +52,25 @@ function renderCloud() {
   $('cloudUser').textContent = cloud.user ? 'Logged in to Spotify as ' + cloud.user.name + '.' : '';
   $('cloudStatus').className = 'status ' + CLOUD_LIGHT[cloud.status];
   $('cloudTxt').textContent = cloud.text || '…';
+}
+
+function renderHalftime() {
+  const pl = state.halftime;
+  $('htNow').textContent = pl ? 'Playing from “' + pl.name + '”' + (pl.total ? ' (' + pl.total + ' songs)' : '') + '.' : 'No playlist chosen yet.';
+  $('htClear').hidden = !pl;
+}
+
+/** Reads a playlist link or URI, looks up its name (and size, for your own playlists) and saves it. */
+async function chooseHalftime() {
+  const m = $('htLink').value.match(/playlist[/:]([A-Za-z0-9]{22})/);
+  if (!m) { toast('That is not a playlist link. In Spotify: playlist → ⋯ → Share → Copy link.'); return; }
+  const r = await spotify.playlist(m[1]);
+  if (!r.ok && r.status !== 404 && r.status !== 403) { toast(explain(r)); return; }
+  // Spotify's own playlists (e.g. "Hot Hits") can't be looked up by apps like this, but may still play.
+  const j = r.ok ? r.json || {} : {};
+  saveHalftime({ uri: 'spotify:playlist:' + m[1], name: j.name || 'Your playlist', total: j.items?.total ?? j.tracks?.total ?? 0 });
+  $('htLink').value = '';
+  toast(r.ok ? 'Halftime music: “' + state.halftime.name + '”.' : 'Saved. Spotify would not show this playlist\'s details, so try the button once to check it plays.', 'info');
 }
 
 const renderLog = () => { $('pressLog').textContent = pressLogText() || 'Nothing pressed yet.'; };
@@ -104,6 +124,7 @@ export function initSettings() {
   on('latency', (ms, what) => { $('latency').textContent = (what === 'play' ? 'Last press: ' : 'Spotify responds in ') + Math.round(ms) + ' ms'; });
   on('ka', renderKeepAwake);
   on('cloud', renderCloud);
+  on('halftime', renderHalftime);
   on('presslog', () => { if (!$('setScrim').hidden) renderLog(); });
 
   $('setClose').addEventListener('click', closeSettings);
@@ -114,6 +135,8 @@ export function initSettings() {
   $('kaBtn').addEventListener('click', () => setKeepAwake(!state.ka.on));
   $('copyBackup').addEventListener('click', async () => { if (!(await copyText($('backup').value, 'Copied.'))) $('backup').select(); });
   $('loadBackup').addEventListener('click', loadBackup);
+  $('htSave').addEventListener('click', chooseHalftime);
+  $('htClear').addEventListener('click', () => saveHalftime(null));
   $('copyLog').addEventListener('click', () => copyText(pressLogText() || 'Nothing pressed yet.', 'Copied.'));
   $('logout').addEventListener('click', () => { closeSettings(); logout(); });
 }

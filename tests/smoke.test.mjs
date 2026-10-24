@@ -128,6 +128,34 @@ try {
     await page.click('#editBtn');
   }
 
+  console.log('Halftime & timeout music');
+  {
+    check('halftime button at the bottom, asks for a playlist', await page.isVisible('#htBtn') && /Choose a playlist/.test(await page.textContent('#htSub')));
+    const last = await page.evaluate(() => { const m = document.getElementById('main'); return m.lastElementChild.id; });
+    check('it is the last thing on the main screen', last === 'htBtn', last);
+    await page.click('#htBtn');
+    check('tapping it without a playlist opens Settings', await page.isVisible('#setScrim'));
+    await page.fill('#htLink', 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M?si=abc');
+    await page.click('#htSave'); await page.waitForTimeout(300);
+    check('pasting a playlist link saves it with its name and size', /Halftime Mix.*20 songs/.test(await page.textContent('#htNow')));
+    await page.click('#setClose');
+    check('the button shows the playlist name', /Halftime Mix/.test(await page.textContent('#htSub')));
+    const n = calls.length;
+    await page.click('#htBtn'); await page.waitForTimeout(600);
+    const sent = calls.slice(n);
+    const play = sent.find(c => c.path === '/me/player/play');
+    check('plays the playlist from a random song', play?.body.context_uri === 'spotify:playlist:37i9dQZF1DXcBWIGoYBM5M' && play.body.offset.position >= 0 && play.body.offset.position < 20, JSON.stringify(play?.body));
+    check('turns shuffle on and repeat-one off', sent.some(c => c.path === '/me/player/shuffle' && c.query.state === 'true') && sent.some(c => c.path === '/me/player/repeat' && c.query.state === 'context'));
+    check('button shows playing until STOP', await page.locator('#htBtn.playing').count() === 1 && (await page.textContent('#nowT')) === 'Halftime music');
+    await page.waitForTimeout(1500);
+    check('still playing after a while (no clip timer)', await page.locator('#htBtn.playing').count() === 1);
+    await page.click('#stopBtn'); await page.waitForTimeout(400);
+    check('STOP ends it and goes back to the silent track', await page.locator('#htBtn.playing').count() === 0 && lastPlay(calls)?.song === SILENT.uri);
+    await page.reload(); await page.waitForTimeout(500);
+    check('the playlist is remembered after reload', /Halftime Mix/.test(await page.textContent('#htSub')));
+    await page.screenshot({ path: path.join(OUT, '12-halftime.png'), fullPage: true });
+  }
+
   console.log('Settings');
   {
     await page.click('#setBtn');

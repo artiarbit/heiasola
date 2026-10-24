@@ -78,6 +78,7 @@
   <main class="screen" id="main" hidden>
     <div class="specials" id="specials"></div>
     <div class="grid" id="grid"></div>
+    <button class="half" id="htBtn"><span class="half-t">Halftime &amp; Timeout Music</span><span class="half-s" id="htSub"></span></button>
   </main>
 </div>
 
@@ -128,6 +129,13 @@
       <span class="lab">Heia Sola! defaults</span>
       <div class="row" id="resetWrap"></div>
       <p class="small">Replaces all buttons on this phone with the club's songs and timings.</p>
+    </div>
+    <div class="field">
+      <label for="htLink">Halftime &amp; timeout music</label>
+      <p class="small" id="htNow"></p>
+      <input class="txt" id="htLink" placeholder="Paste a Spotify playlist link" autocomplete="off">
+      <div class="row"><button class="btn" id="htSave">Use this playlist</button><button class="btn" id="htClear">Remove</button></div>
+      <p class="small">In Spotify: open the playlist → ⋯ → Share → Copy link. The button at the bottom plays a random song from it and carries on through the playlist until you press STOP.</p>
     </div>
     <div class="field">
       <span class="lab">What Spotify said (last presses)</span>
