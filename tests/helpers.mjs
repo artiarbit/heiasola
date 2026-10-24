@@ -58,11 +58,13 @@ export function fakeSpotify(page, { devicesStatus = 200 } = {}) {
     if (p === '/me/player/play') {
       if (calls.ignorePlays > 0) { calls.ignorePlays--; player.playing = false; }
       else {
-        if (body?.uris) Object.assign(player, { uri: calls.otherCopy?.uri || body.uris[0], name: calls.otherCopy?.name, progress: body.position_ms ?? 0 });
-        player.playing = !(calls.loadPaused > 0 && body?.uris && calls.loadPaused--);
+        const song = body?.uris?.[0] || body?.offset?.uri;
+        if (song) Object.assign(player, { uri: calls.otherCopy?.uri || song, name: calls.otherCopy?.name, progress: body.position_ms ?? 0 });
+        player.playing = !(calls.loadPaused > 0 && song && calls.loadPaused--);
       }
       return route.fulfill({ status: 204 });
     }
+    if (p.startsWith('/tracks/')) return route.fulfill({ json: { uri: 'spotify:track:' + p.split('/')[2], name: 'x', album: { uri: 'spotify:album:TestAlbum', images: [] }, artists: [] } });
     if (p === '/me/player/pause') { player.playing = false; return route.fulfill({ status: 204 }); }
     if (p === '/me/player' && req.method() === 'GET') {
       if (!player.uri) return route.fulfill({ status: 204 });

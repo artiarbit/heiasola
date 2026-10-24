@@ -45,7 +45,7 @@ export function resolveSilent() {
 export async function idle() {
   if (!state.ka.on) return false;
   if (!state.ka.uri && !(await resolveSilent())) return false;
-  const r = await spotify.play(state.ka.uri);
+  const r = await send('silent track', () => spotify.play(state.ka.uri));
   if (!r.ok) return false;
   spotify.repeatTrack();
   return true;
@@ -86,8 +86,7 @@ export async function playClip(c) {
 
   // The phone isn't playing the song. If it has the song ready but paused, a plain resume is enough;
   // otherwise send the song again, from the start of the clip.
-  const again = seen === 'ready' ? await send('resume', () => spotify.play())
-    : await send('play again', () => spotify.play(c.uri, c.start));
+  const again = seen === 'ready' ? await send('resume', () => spotify.play()) : await playInAlbum(c);
   if (!stillOn(c, my)) return;
   if (!again.ok) return failed(explain(again));
   showPlaying(c, my);
@@ -102,6 +101,17 @@ async function send(what, command) {
   const r = await command();
   log(what + ' → ' + (r.ok ? 'OK' : r.status === 0 ? 'no answer' : r.status + ' ' + errorReason(r)).trim());
   return r;
+}
+
+/**
+ * Second try in another form: the song as part of its album, like a tap in the Spotify app.
+ * On an iPhone the single-song form can leave the player empty ("no song", everything blocked).
+ */
+async function playInAlbum(c) {
+  const t = await spotify.track(c.uri.split(':').pop());
+  const album = t.ok && t.json?.album?.uri;
+  if (!album) return send('play again', () => spotify.play(c.uri, c.start));
+  return send('play again, as part of its album', () => spotify.playInAlbum(album, c.uri, c.start));
 }
 
 /** Sends the play command: a plain resume if the song is already waiting at the start point. */

@@ -106,9 +106,12 @@ Set it to `''` to go back to phone-only. Details in the comment at the top of `j
 - A play command can get **204 (or 502) and the phone still doesn't play**: it stops the music that
   was playing and goes quiet (reported on iPhone with other music playing). So `playClip` shows the
   clip at once, then checks `GET /me/player` (after `TIMING.confirmWaits`); if the song isn't playing
-  it sends the command once more (or a plain resume if the song sits paused at its start), and after a
+  it sends the command once more (as part of the song's album, `playInAlbum`; or a plain resume if the song sits paused at its start), and after a
   second failure shows a message. A song counts as ours by id **or name**: Spotify can play another copy
-  of the song, and `linked_from` was removed in Feb 2026. Every step is written to the press log
+  of the song, and `linked_from` was removed in Feb 2026.
+  Ørjan's iPhone log (2026-10-24, own music playing first): play → 204, then the phone reports
+  "no song, paused at 0:00" with pausing/resuming/skipping/transferring all disallowed, also after a
+  second play; once 502 then 404 Device not found. Speakers work with the same commands. Every step is written to the press log
   (Settings → "What Spotify said"); ask Ørjan for a screenshot of it when playback misbehaves. Clip plays skip
   `api()`'s 502 retry (`retryGateway: false`): two commands back to back can leave the phone stopped,
   so the check comes first. The fake Spotify in `tests/helpers.mjs` keeps a player state

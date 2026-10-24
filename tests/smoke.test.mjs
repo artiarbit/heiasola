@@ -213,7 +213,7 @@ try {
   {
     const { page, calls, errors } = await openApp(browser);
     const first = (await stored(page)).find(c => !c.special);
-    const playsOf = uri => calls.filter(c => c.path === '/me/player/play' && c.body?.uris?.[0] === uri).length;
+    const playsOf = uri => calls.filter(c => c.path === '/me/player/play' && (c.body?.uris?.[0] === uri || c.body?.offset?.uri === uri)).length;
     const looks = () => calls.filter(c => c.path === '/me/player' && c.method === 'GET').length;
 
     // A normal press: one command, one quick look that it started.
@@ -231,6 +231,8 @@ try {
     await page.waitForTimeout(3500);
     check('the app notices and sends the command again', playsOf(first.uri) === before + 2, (playsOf(first.uri) - before) + ' commands');
     check('the song now plays on the phone', calls.player.uri === first.uri && calls.player.playing);
+    const retry = [...calls].reverse().find(c => c.path === '/me/player/play' && c.body?.offset);
+    check('the second try plays the song as part of its album', retry?.body.context_uri === 'spotify:album:TestAlbum' && retry.body.offset.uri === first.uri && retry.body.position_ms === Math.round(first.start), JSON.stringify(retry?.body));
     check('button still marked playing, no message', await page.locator('#grid .pad.playing').count() === 1 && await page.isHidden('#toast'));
     await page.screenshot({ path: path.join(OUT, '9-asked-again.png') });
     await page.click('#stopBtn'); await page.waitForTimeout(300);
@@ -275,7 +277,7 @@ try {
     await page.click('#setBtn');
     const logText = await page.textContent('#pressLog');
     check('Settings shows the press log, newest press first', logText.split('\n')[0].endsWith(first.name), logText.split('\n')[0]);
-    check('the log says what the phone was doing and what was sent', /phone: “spotify:track:OtherMusic|phone: .*paused/.test(logText) && /play again → OK/.test(logText) && /gave up/.test(logText), logText.slice(0, 600));
+    check('the log says what the phone was doing and what was sent', /phone: “spotify:track:OtherMusic|phone: .*paused/.test(logText) && /play again, as part of its album → OK/.test(logText) && /gave up/.test(logText), logText.slice(0, 600));
     check('the log says whether the phone is still in the device list', /device list: Test iPhone/.test(logText));
     await page.screenshot({ path: path.join(OUT, '10-press-log.png'), fullPage: true });
     await page.click('#setClose');
