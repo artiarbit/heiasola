@@ -1,4 +1,4 @@
-// The Settings sheet (⚙︎): status, device, keep-awake, backup, reset to defaults, log out.
+// The Settings sheet (⚙︎): status, device, keep-awake, backup, reset to defaults, press log, log out.
 
 import { state, on, setClips, loadDefaults, toast } from './state.js';
 import { logout, usingDefaultApp } from './spotify.js';
@@ -7,6 +7,7 @@ import { resolveSilent, isResolvingSilent, setKeepAwake } from './player.js';
 import { SILENT_TRACK, OWNER } from './config.js';
 import { $, el, copyText } from './dom.js';
 import { cloud, cloudEnabled, sync } from './cloud.js';
+import { pressLogText } from './presslog.js';
 
 export function openSettings() {
   $('whichApp').textContent = usingDefaultApp() ? `Connected through ${OWNER}'s app.` : 'Connected through your own Spotify app.';
@@ -16,6 +17,7 @@ export function openSettings() {
   renderReset('button');
   renderDevices();
   renderCloud();
+  renderLog();
   if (cloudEnabled() && cloud.status !== 'syncing') sync();
   $('setScrim').hidden = false;
   refreshDevices();
@@ -50,6 +52,8 @@ function renderCloud() {
   $('cloudStatus').className = 'status ' + CLOUD_LIGHT[cloud.status];
   $('cloudTxt').textContent = cloud.text || '…';
 }
+
+const renderLog = () => { $('pressLog').textContent = pressLogText() || 'Nothing pressed yet.'; };
 
 function renderKeepAwake() {
   const ka = state.ka;
@@ -100,6 +104,7 @@ export function initSettings() {
   on('latency', (ms, what) => { $('latency').textContent = (what === 'play' ? 'Last press: ' : 'Spotify responds in ') + Math.round(ms) + ' ms'; });
   on('ka', renderKeepAwake);
   on('cloud', renderCloud);
+  on('presslog', () => { if (!$('setScrim').hidden) renderLog(); });
 
   $('setClose').addEventListener('click', closeSettings);
   $('setScrim').addEventListener('click', e => { if (e.target === $('setScrim')) closeSettings(); });
@@ -109,5 +114,6 @@ export function initSettings() {
   $('kaBtn').addEventListener('click', () => setKeepAwake(!state.ka.on));
   $('copyBackup').addEventListener('click', async () => { if (!(await copyText($('backup').value, 'Copied.'))) $('backup').select(); });
   $('loadBackup').addEventListener('click', loadBackup);
+  $('copyLog').addEventListener('click', () => copyText(pressLogText() || 'Nothing pressed yet.', 'Copied.'));
   $('logout').addEventListener('click', () => { closeSettings(); logout(); });
 }

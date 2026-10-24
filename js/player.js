@@ -6,7 +6,9 @@
 // of that button is a plain resume, which is the fastest thing Spotify can do.
 
 import { state, emit, saveKeepAwake, regularClips, toast } from './state.js';
-import { spotify, explain, isGatewayError } from './spotify.js';
+import { spotify, explain, errorReason, isGatewayError } from './spotify.js';
+import { logPress, log } from './presslog.js';
+import { fmtShort } from './dom.js';
 import { SILENT_TRACK, TIMING } from './config.js';
 
 let stopTimer = null;
@@ -67,6 +69,7 @@ export async function playClip(c) {
   const my = ++generation;
   clearTimeout(stopTimer);
   cancelFade = true;
+  logPress(c.name);
   emit('busy', c.id, true);
   const t0 = performance.now();
   const r = await startSong(c);
@@ -78,25 +81,38 @@ export async function playClip(c) {
   if (!r.ok && !isGatewayError(r)) return failed(explain(r));
 
   showPlaying(c, my);
-  if ((await confirmStarted(c, my)) !== false) return;
+  const seen = await confirmStarted(c, my);
+  if (seen === null || seen === 'playing') return;
 
-  // The phone isn't playing the song: ask once more, from the start of the clip.
-  const again = await spotify.play(c.uri, c.start);
+  // The phone isn't playing the song. If it has the song ready but paused, a plain resume is enough;
+  // otherwise send the song again, from the start of the clip.
+  const again = seen === 'ready' ? await send('resume', () => spotify.play())
+    : await send('play again', () => spotify.play(c.uri, c.start));
   if (!stillOn(c, my)) return;
   if (!again.ok) return failed(explain(again));
   showPlaying(c, my);
-  if ((await confirmStarted(c, my)) === false) failed(NOT_STARTED);
+  const last = await confirmStarted(c, my);
+  if (last === null || last === 'playing') return;
+  failed(NOT_STARTED);
+  logDeviceList();
+}
+
+/** Sends a command and logs what Spotify answered. */
+async function send(what, command) {
+  const r = await command();
+  log(what + ' → ' + (r.ok ? 'OK' : r.status === 0 ? 'no answer' : r.status + ' ' + errorReason(r)).trim());
+  return r;
 }
 
 /** Sends the play command: a plain resume if the song is already waiting at the start point. */
 async function startSong(c) {
   if (state.cue && state.cue.uri === c.uri && state.cue.pos === c.start) {
-    const r = await spotify.play();
+    const r = await send('resume (song was ready)', () => spotify.play());
     if (r.ok) return r;
   }
   // No automatic second try on 502–504 here: two commands right after each other can leave the
   // phone stopped. confirmStarted() looks at what the phone is doing first, and only then asks again.
-  return spotify.play(c.uri, c.start, { retryGateway: false });
+  return send('play from ' + fmtShort(c.start), () => spotify.play(c.uri, c.start, { retryGateway: false }));
 }
 
 /** Marks the clip as playing and (re)starts its countdown and timed stop. */
@@ -114,35 +130,71 @@ function failed(message) {
   state.current = null;
   emit('playing');
   toast(message);
+  log('gave up, showed a message');
 }
 
 /** This clip is still the thing playing: no newer press, no STOP, and its end hasn't started. */
 const stillOn = (c, my) => my === generation && state.current?.id === c.id && !state.fading;
 
-/** Is Spotify playing this song right now? true / false, or null if Spotify didn't say. */
-async function playingSong(uri) {
-  const r = await spotify.player();
-  if (r.status === 204) return false;  // nothing playing at all
+const norm = s => (s || '').toLowerCase().trim();
+/**
+ * The song on the phone is this button's song. Spotify sometimes plays another copy of the same song
+ * (another id, same name; e.g. a version licensed for your country) and since Feb 2026 no longer says
+ * which id it replaced, so a matching name counts too.
+ */
+const isOurSong = (item, c) => !!item && (item.uri === c.uri || (!!c.trackName && norm(item.name) === norm(c.trackName)));
+
+/** What the phone is doing for this clip: 'playing', 'ready' (our song paused near its start), 'other', or null if Spotify didn't say. */
+function phoneState(r, c) {
+  if (r.status === 204) return 'other';  // nothing playing at all
   if (!r.ok || !r.json) return null;
-  const item = r.json.item;
-  return !!(r.json.is_playing && item && (item.uri === uri || item.linked_from?.uri === uri));
+  const p = r.json;
+  if (!isOurSong(p.item, c)) return 'other';
+  if (p.is_playing) return 'playing';
+  return Math.abs((p.progress_ms || 0) - c.start) < 5000 ? 'ready' : 'other';
+}
+
+/** One log line with what Spotify says the phone is doing. */
+function describePlayer(r, c) {
+  if (r.status === 204) return 'phone: nothing playing';
+  if (!r.ok || !r.json) return 'phone: no answer (' + r.status + ')';
+  const p = r.json, it = p.item, d = p.device;
+  const song = !it ? 'no song' : it.uri === c.uri ? 'our song' : isOurSong(it, c) ? 'our song (other copy)' : '“' + it.name + '”';
+  const blocked = Object.keys(p.actions?.disallows || {}).filter(k => p.actions.disallows[k]);
+  return ['phone:', song, p.is_playing ? 'PLAYING' : 'paused', 'at ' + fmtShort(p.progress_ms),
+    d ? '· on ' + d.name + (d.id === state.device?.id ? '' : ' (not the chosen device)') : '· no device',
+    p.context ? '· from ' + p.context.type : '', p.shuffle_state ? '· shuffle' : '', p.smart_shuffle ? '· smart shuffle' : '',
+    blocked.length ? '· blocked: ' + blocked.join(',') : ''].filter(Boolean).join(' ');
 }
 
 /**
  * Spotify sometimes accepts a play command and the phone still doesn't start the song: it stops what
  * was playing and goes quiet. Seen on iPhones when other music was playing. So look what the phone is
  * doing (Spotify's report lags a little, hence a second look before giving up).
- * Returns true (playing), false (not playing), or null (can't tell, or the clip is no longer current).
+ * Returns 'playing', 'ready', 'other', or null (can't tell, or the clip is no longer current).
  */
 async function confirmStarted(c, my) {
+  let seen = 'other';
   for (const wait of TIMING.confirmWaits) {
     await sleep(wait);
     if (!stillOn(c, my)) return null;
-    const on = await playingSong(c.uri);
-    if (!stillOn(c, my) || on === null) return null;
-    if (on) return true;
+    const r = await spotify.player();
+    if (!stillOn(c, my)) return null;
+    log(describePlayer(r, c));
+    seen = phoneState(r, c);
+    if (seen === null || seen === 'playing') return seen;
   }
-  return false;
+  return seen;
+}
+
+/** After giving up: is the chosen device still in Spotify's list (or has its Spotify app gone to sleep)? */
+async function logDeviceList() {
+  const r = await spotify.devices();
+  if (!r.ok) { log('device list: no answer (' + r.status + ')'); return; }
+  const list = r.json?.devices || [];
+  const d = list.find(x => x.id === state.device?.id);
+  log(d ? 'device list: ' + d.name + (d.is_active ? ' is active' : ' is listed but not active')
+    : 'device list: ' + (state.device?.name || 'chosen device') + ' is missing (' + (list.map(x => x.name).join(', ') || 'no devices') + ')');
 }
 
 async function endClip(c, my) {
@@ -179,6 +231,7 @@ async function recue(c, my) {
 
 export async function stopNow() {
   const my = ++generation;
+  logPress('STOP');
   clearTimeout(stopTimer);
   cancelFade = true;
   const was = state.current && state.clips.find(x => x.id === state.current.id);

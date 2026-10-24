@@ -184,6 +184,7 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .field > label, .field .lab { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
 .txt { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; color: var(--text); font: inherit; font-size: 16px; width: 100%; }
 textarea.txt { min-height: 90px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+.log { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--text); font: 11px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 300px; overflow-y: auto; }
 .btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-weight: 600; }
 .btn.primary { background: var(--led); border-color: var(--led); color: var(--ink); }
 .btn.danger { color: var(--err-text); }

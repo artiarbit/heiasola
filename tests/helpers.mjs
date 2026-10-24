@@ -35,15 +35,19 @@ export const SILENT = { uri: 'spotify:track:silent', name: 'Silence 10 Minutes',
 export const NEW_SONG = { uri: 'spotify:track:NewSong000000000000001', name: 'New Song', duration_ms: 200000, artists: [{ name: 'Band' }], album: { name: 'Album', images: [] } };
 
 /**
- * Returns the list of calls the app made. Two knobs ride along on it:
+ * Returns the list of calls the app made. Knobs for tests ride along on it:
  *   calls.player       what the fake phone is playing: { uri, playing } (tests may set it)
  *   calls.ignorePlays  > 0: the next play commands get 204 but the phone stops instead of playing
  *                      (what iPhones sometimes do when other music was playing)
+ *   calls.loadPaused   > 0: the next play commands load the song but leave it paused
+ *   calls.otherCopy    { uri, name }: the phone plays this other copy of the song instead (same name, other id)
  */
 export function fakeSpotify(page, { devicesStatus = 200 } = {}) {
   const calls = [];
   calls.player = { uri: null, playing: false };
   calls.ignorePlays = 0;
+  calls.loadPaused = 0;
+  calls.otherCopy = null;
   page.route('https://api.spotify.com/**', route => {
     const req = route.request();
     const url = new URL(req.url());
@@ -53,13 +57,16 @@ export function fakeSpotify(page, { devicesStatus = 200 } = {}) {
     const player = calls.player;
     if (p === '/me/player/play') {
       if (calls.ignorePlays > 0) { calls.ignorePlays--; player.playing = false; }
-      else { if (body?.uris) player.uri = body.uris[0]; player.playing = true; }
+      else {
+        if (body?.uris) Object.assign(player, { uri: calls.otherCopy?.uri || body.uris[0], name: calls.otherCopy?.name, progress: body.position_ms ?? 0 });
+        player.playing = !(calls.loadPaused > 0 && body?.uris && calls.loadPaused--);
+      }
       return route.fulfill({ status: 204 });
     }
     if (p === '/me/player/pause') { player.playing = false; return route.fulfill({ status: 204 }); }
     if (p === '/me/player' && req.method() === 'GET') {
       if (!player.uri) return route.fulfill({ status: 204 });
-      return route.fulfill({ json: { device: PHONE, is_playing: player.playing, progress_ms: 1000, item: { uri: player.uri } } });
+      return route.fulfill({ json: { device: PHONE, is_playing: player.playing, progress_ms: player.progress ?? 0, item: { uri: player.uri, name: player.name || player.uri } } });
     }
     if (p === '/me/player/devices') {
       if (devicesStatus === 403) return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ error: { status: 403, message: 'Check settings on developer.spotify.com/dashboard, the user may not be registered.' } }) });

@@ -245,12 +245,40 @@ try {
     await page.waitForTimeout(2500);
     check('STOP during the check: the song is not sent again', playsOf(first.uri) === before + 1, (playsOf(first.uri) - before) + ' commands');
 
+    // The phone plays another copy of the song (same name, other id): that counts as playing.
+    calls.otherCopy = { uri: 'spotify:track:OtherCopyOfTheSong00001', name: first.trackName };
+    before = playsOf(first.uri);
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForTimeout(2000);
+    check('another copy of the same song counts as playing (no second command)', playsOf(first.uri) === before + 1, (playsOf(first.uri) - before) + ' commands');
+    check('and no message', await page.isHidden('#toast') && await page.locator('#grid .pad.playing').count() === 1);
+    calls.otherCopy = null;
+    await page.click('#stopBtn'); await page.waitForTimeout(300);
+
+    // The phone loads the song but leaves it paused at the start: a plain resume is sent.
+    calls.loadPaused = 1;
+    before = calls.length;
+    await page.click('#grid .pad[data-id]:first-child');
+    await page.waitForTimeout(3000);
+    const sent = calls.slice(before).filter(c => c.path === '/me/player/play');
+    check('song left paused at its start: the app sends a resume', sent.length === 2 && sent[0].body?.uris && !sent[1].body, sent.map(c => c.body ? 'song' : 'resume').join(','));
+    check('and the song plays, no message', calls.player.playing && calls.player.uri === first.uri && await page.isHidden('#toast'));
+    await page.click('#stopBtn'); await page.waitForTimeout(300);
+
     // The phone refuses twice: a clear message instead of silence, and nothing marked playing.
     calls.ignorePlays = 2;
     await page.click('#grid .pad[data-id]:first-child');
     await page.waitForSelector('#toast:not([hidden])', { timeout: 8000 });
     check('two refusals give a clear message', /did not start the song/.test(await page.textContent('#toast')), await page.textContent('#toast'));
     check('nothing marked playing after that', await page.locator('.pad.playing').count() === 0);
+    await page.waitForTimeout(500);
+    await page.click('#setBtn');
+    const logText = await page.textContent('#pressLog');
+    check('Settings shows the press log, newest press first', logText.split('\n')[0].endsWith(first.name), logText.split('\n')[0]);
+    check('the log says what the phone was doing and what was sent', /phone: “spotify:track:OtherMusic|phone: .*paused/.test(logText) && /play again → OK/.test(logText) && /gave up/.test(logText), logText.slice(0, 600));
+    check('the log says whether the phone is still in the device list', /device list: Test iPhone/.test(logText));
+    await page.screenshot({ path: path.join(OUT, '10-press-log.png'), fullPage: true });
+    await page.click('#setClose');
     check('no JS errors', !errors.length, errors.join(' | '));
     await page.close();
   }

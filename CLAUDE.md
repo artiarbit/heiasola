@@ -21,6 +21,7 @@ in plain words, test before pushing, and push when he asks for a change.
 | `js/spotify.js` | Login (PKCE, no server), token refresh, `api()`, `spotify.*` endpoint helpers, error messages. |
 | `js/devices.js` | Device polling, status light, choosing the device (phone first, never a speaker automatically). |
 | `js/player.js` | Play/stop clips, fade, Random, keep-awake silent track, editor listening helpers. |
+| `js/presslog.js` | Log of the last 5 presses (commands sent, what Spotify said the phone did). Shown in Settings for troubleshooting; memory only. |
 | `js/ui.js` | Main screen rendering: buttons, countdowns, status chip, toasts, keyboard. |
 | `js/editor.js` | Edit/new button sheet. |
 | `js/settings.js` | Settings sheet. |
@@ -105,7 +106,10 @@ Set it to `''` to go back to phone-only. Details in the comment at the top of `j
 - A play command can get **204 (or 502) and the phone still doesn't play**: it stops the music that
   was playing and goes quiet (reported on iPhone with other music playing). So `playClip` shows the
   clip at once, then checks `GET /me/player` (after `TIMING.confirmWaits`); if the song isn't playing
-  it sends the command once more, and after a second failure shows a message. Clip plays skip
+  it sends the command once more (or a plain resume if the song sits paused at its start), and after a
+  second failure shows a message. A song counts as ours by id **or name**: Spotify can play another copy
+  of the song, and `linked_from` was removed in Feb 2026. Every step is written to the press log
+  (Settings → "What Spotify said"); ask Ørjan for a screenshot of it when playback misbehaves. Clip plays skip
   `api()`'s 502 retry (`retryGateway: false`): two commands back to back can leave the phone stopped,
   so the check comes first. The fake Spotify in `tests/helpers.mjs` keeps a player state
   (`calls.player`) and can act this out (`calls.ignorePlays`).
