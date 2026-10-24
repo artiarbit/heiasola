@@ -294,18 +294,14 @@ export function playRandom() {
 
 /* ---------- listening in the editor ---------- */
 
-export async function listenFrom(uri, ms) {
-  ++generation;
-  clearTimeout(stopTimer);
-  state.current = null;
+/**
+ * "Play song" in the editor: plays from `ms` to the end of the song through the same path as a button,
+ * so it gets the same iPhone handling (album form, check that it started, second try) and log lines.
+ */
+export function listenFrom(clip, ms) {
   state.cue = null;
-  emit('playing');
-  logPress('Edit: play song');
-  // Album form first, like the buttons: the single-song form can leave an iPhone stuck.
-  const album = await albumUri(uri);
-  const r = album ? await send('play from ' + fmtShort(ms) + ', as part of its album', () => spotify.playInAlbum(album, uri, ms))
-    : await send('play from ' + fmtShort(ms), () => spotify.play(uri, ms));
-  if (!r.ok) toast(explain(r));
+  const left = Math.max(1, ((clip.trackDur || ms + 600000) - ms) / 1000);
+  return playClip({ ...clip, id: '__listen', name: 'Edit: play song', start: ms, dur: left, fade: 0 });
 }
 
 export function pauseListening() {

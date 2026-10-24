@@ -231,7 +231,7 @@ export function initEditor() {
   $('edChange').addEventListener('click', () => { ed.clip.uri = ''; render(); $('edSearch').focus(); });
   $('edSearch').addEventListener('input', onSearchInput);
 
-  $('edListen').addEventListener('click', () => listenFrom(ed.clip.uri, ed.clip.start));
+  $('edListen').addEventListener('click', () => listenFrom(ed.clip, ed.clip.start));
   $('edPauseListen').addEventListener('click', pauseListening);
   $('edMark').addEventListener('click', async () => {
     const pos = await positionIn(ed.clip.uri);
