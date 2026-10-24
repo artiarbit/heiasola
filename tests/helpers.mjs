@@ -53,7 +53,7 @@ export function fakeSpotify(page, { devicesStatus = 200 } = {}) {
     const url = new URL(req.url());
     const p = url.pathname.replace('/v1', '');
     const body = req.postData() ? JSON.parse(req.postData()) : null;
-    calls.push({ method: req.method(), path: p, query: Object.fromEntries(url.searchParams), body });
+    calls.push({ method: req.method(), path: p, query: Object.fromEntries(url.searchParams), body, song: body?.uris?.[0] || body?.offset?.uri });
     const player = calls.player;
     if (p === '/me/player/play') {
       if (calls.ignorePlays > 0) { calls.ignorePlays--; player.playing = false; }
@@ -118,6 +118,6 @@ export async function openApp(browser, { storage = LOGGED_IN, devicesStatus, set
   await page.waitForTimeout(500);
   return { page, calls, errors };
 }
-export const lastPlay = calls => [...calls].reverse().find(c => c.path === '/me/player/play' && c.body?.uris);
+export const lastPlay = calls => [...calls].reverse().find(c => c.path === '/me/player/play' && c.song);
 export const stored = page => page.evaluate(() => JSON.parse(localStorage.getItem('gmr-clips')));
 

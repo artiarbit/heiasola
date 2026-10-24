@@ -4,7 +4,7 @@ import { state, on, emit, ensureClips } from './state.js';
 import { store } from './store.js';
 import { finishLogin } from './spotify.js';
 import { refreshDevices } from './devices.js';
-import { resolveSilent } from './player.js';
+import { resolveSilent, prefetchAlbums } from './player.js';
 import { initUI, showScreen } from './ui.js';
 import { initEditor } from './editor.js';
 import { initSettings } from './settings.js';
@@ -41,6 +41,7 @@ function onLoginChange() {
   syncCloud();
   refreshDevices();
   resolveSilent();
+  setTimeout(prefetchAlbums, 1500);  // after the first checks, so they aren't slowed down
 }
 
 async function start() {

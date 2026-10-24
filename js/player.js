@@ -86,7 +86,7 @@ export async function playClip(c) {
 
   // The phone isn't playing the song. If it has the song ready but paused, a plain resume is enough;
   // otherwise send the song again, from the start of the clip.
-  const again = seen === 'ready' ? await send('resume', () => spotify.play()) : await playInAlbum(c);
+  const again = seen === 'ready' ? await send('resume', () => spotify.play()) : await playSong(c, { album: false });
   if (!stillOn(c, my)) return;
   if (!again.ok) return failed(explain(again));
   showPlaying(c, my);
@@ -103,15 +103,34 @@ async function send(what, command) {
   return r;
 }
 
-/**
- * Second try in another form: the song as part of its album, like a tap in the Spotify app.
- * On an iPhone the single-song form can leave the player empty ("no song", everything blocked).
+/*
+ * Two forms of "play this song": the song on its own, or its album starting at the song (what the
+ * Spotify app does on a tap). On Ørjan's iPhone the single-song form left the player empty ("no song",
+ * everything blocked) while the album form played. So the album form goes first and the single-song
+ * form is the second try. Album ids are looked up once per song and kept in memory.
  */
-async function playInAlbum(c) {
-  const t = await spotify.track(c.uri.split(':').pop());
-  const album = t.ok && t.json?.album?.uri;
-  if (!album) return send('play again', () => spotify.play(c.uri, c.start));
-  return send('play again, as part of its album', () => spotify.playInAlbum(album, c.uri, c.start));
+const albumOf = new Map();
+async function albumUri(c) {
+  if (!albumOf.has(c.uri)) {
+    const t = await spotify.track(c.uri.split(':').pop());
+    if (!t.ok) return null;  // try again next time
+    albumOf.set(c.uri, t.json?.album?.uri || null);
+  }
+  return albumOf.get(c.uri);
+}
+
+/** Looks up the albums of all buttons in the background, so the first press doesn't wait for it. */
+export async function prefetchAlbums() {
+  for (const c of state.clips.filter(x => x.uri && !albumOf.has(x.uri))) {
+    if (!state.tok) return;
+    await albumUri(c);
+  }
+}
+
+async function playSong(c, { album, ...opts }) {
+  const albumId = album && await albumUri(c);
+  if (albumId) return send('play from ' + fmtShort(c.start) + ', as part of its album', () => spotify.playInAlbum(albumId, c.uri, c.start, opts));
+  return send('play from ' + fmtShort(c.start) + (album ? '' : ', song on its own'), () => spotify.play(c.uri, c.start, opts));
 }
 
 /** Sends the play command: a plain resume if the song is already waiting at the start point. */
@@ -122,7 +141,7 @@ async function startSong(c) {
   }
   // No automatic second try on 502–504 here: two commands right after each other can leave the
   // phone stopped. confirmStarted() looks at what the phone is doing first, and only then asks again.
-  return send('play from ' + fmtShort(c.start), () => spotify.play(c.uri, c.start, { retryGateway: false }));
+  return playSong(c, { album: true, retryGateway: false });
 }
 
 /** Marks the clip as playing and (re)starts its countdown and timed stop. */

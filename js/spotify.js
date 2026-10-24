@@ -170,8 +170,8 @@ export const spotify = {
   play: (uri, positionMs, opts) => api('PUT', withDevice('/me/player/play'),
     uri ? { uris: [uri], ...(positionMs != null ? { position_ms: Math.round(positionMs) } : {}) } : undefined, opts),
   /** Plays a song as part of its album (the form the Spotify app itself uses when you tap a song). */
-  playInAlbum: (albumUri, uri, positionMs) => api('PUT', withDevice('/me/player/play'),
-    { context_uri: albumUri, offset: { uri }, position_ms: Math.round(positionMs) }),
+  playInAlbum: (albumUri, uri, positionMs, opts) => api('PUT', withDevice('/me/player/play'),
+    { context_uri: albumUri, offset: { uri }, position_ms: Math.round(positionMs) }, opts),
   pause: () => api('PUT', withDevice('/me/player/pause')),
   seek: ms => api('PUT', withDevice('/me/player/seek?position_ms=' + Math.round(ms))),
   volume: pct => api('PUT', withDevice('/me/player/volume?volume_percent=' + Math.round(pct))),

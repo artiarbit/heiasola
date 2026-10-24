@@ -37,13 +37,13 @@ try {
     await page.click('#grid .pad[data-id]:first-child');
     await page.waitForTimeout(300);
     const p = lastPlay(calls);
-    check('button plays its song at its start', p?.body.uris[0] === first.uri && p.body.position_ms === Math.round(first.start), JSON.stringify(p?.body));
+    check('button plays its song at its start', p?.song === first.uri && p.body.context_uri === 'spotify:album:TestAlbum' && p.body.position_ms === Math.round(first.start), JSON.stringify(p?.body));
     check('command goes to the chosen device', p?.query.device_id === 'phone1');
     check('button marked playing', await page.locator('#grid .pad.playing').count() === 1);
     check('now-playing bar shows the name', (await page.textContent('#nowT')) === first.name);
     await page.click('#stopBtn');
     await page.waitForTimeout(300);
-    check('STOP switches to the silent track (keep-awake)', lastPlay(calls)?.body.uris[0] === SILENT.uri);
+    check('STOP switches to the silent track (keep-awake)', lastPlay(calls)?.song === SILENT.uri);
     check('silent track set to repeat', calls.some(c => c.path === '/me/player/repeat'));
     check('nothing marked playing after STOP', await page.locator('.pad.playing').count() === 0);
   }
@@ -59,7 +59,7 @@ try {
     }, keep.id);
     await page.reload(); await page.waitForTimeout(500);
     const uris = new Set();
-    for (let i = 0; i < 3; i++) { await page.click('#rndBtn'); await page.waitForTimeout(250); uris.add(lastPlay(calls)?.body.uris[0]); }
+    for (let i = 0; i < 3; i++) { await page.click('#rndBtn'); await page.waitForTimeout(250); uris.add(lastPlay(calls)?.song); }
     check('Random only picks songs included in Random', uris.size === 1 && uris.has(keep.uri), [...uris].join(','));
     check('Random button counts down', /^\d+s$/.test(await page.textContent('#rndLbl')));
     await page.click('#stopBtn'); await page.waitForTimeout(300);
@@ -198,7 +198,7 @@ try {
     let n = 0;
     await page.route('https://api.spotify.com/v1/me/player/play**', route => {
       if (n++ > 0) return route.fallback();
-      Object.assign(calls.player, { uri: route.request().postDataJSON().uris[0], playing: true });
+      Object.assign(calls.player, { uri: route.request().postDataJSON().offset.uri, playing: true });
       return route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":{"status":502,"message":"Bad gateway."}}' });
     });
     await page.click('#grid .pad[data-id]:first-child');
@@ -213,7 +213,7 @@ try {
   {
     const { page, calls, errors } = await openApp(browser);
     const first = (await stored(page)).find(c => !c.special);
-    const playsOf = uri => calls.filter(c => c.path === '/me/player/play' && (c.body?.uris?.[0] === uri || c.body?.offset?.uri === uri)).length;
+    const playsOf = uri => calls.filter(c => c.path === '/me/player/play' && (c.song === uri)).length;
     const looks = () => calls.filter(c => c.path === '/me/player' && c.method === 'GET').length;
 
     // A normal press: one command, one quick look that it started.
@@ -231,8 +231,8 @@ try {
     await page.waitForTimeout(3500);
     check('the app notices and sends the command again', playsOf(first.uri) === before + 2, (playsOf(first.uri) - before) + ' commands');
     check('the song now plays on the phone', calls.player.uri === first.uri && calls.player.playing);
-    const retry = [...calls].reverse().find(c => c.path === '/me/player/play' && c.body?.offset);
-    check('the second try plays the song as part of its album', retry?.body.context_uri === 'spotify:album:TestAlbum' && retry.body.offset.uri === first.uri && retry.body.position_ms === Math.round(first.start), JSON.stringify(retry?.body));
+    const tries = calls.filter(c => c.path === '/me/player/play' && c.song === first.uri).slice(-2);
+    check('first try plays the song as part of its album, second try the song on its own', tries[0]?.body.context_uri === 'spotify:album:TestAlbum' && tries[0].body.offset.uri === first.uri && tries[0].body.position_ms === Math.round(first.start) && tries[1]?.body.uris?.[0] === first.uri, JSON.stringify(tries.map(t => t.body)));
     check('button still marked playing, no message', await page.locator('#grid .pad.playing').count() === 1 && await page.isHidden('#toast'));
     await page.screenshot({ path: path.join(OUT, '9-asked-again.png') });
     await page.click('#stopBtn'); await page.waitForTimeout(300);
@@ -263,7 +263,7 @@ try {
     await page.click('#grid .pad[data-id]:first-child');
     await page.waitForTimeout(3000);
     const sent = calls.slice(before).filter(c => c.path === '/me/player/play');
-    check('song left paused at its start: the app sends a resume', sent.length === 2 && sent[0].body?.uris && !sent[1].body, sent.map(c => c.body ? 'song' : 'resume').join(','));
+    check('song left paused at its start: the app sends a resume', sent.length === 2 && sent[0].song && !sent[1].body, sent.map(c => c.body ? 'song' : 'resume').join(','));
     check('and the song plays, no message', calls.player.playing && calls.player.uri === first.uri && await page.isHidden('#toast'));
     await page.click('#stopBtn'); await page.waitForTimeout(300);
 
@@ -277,7 +277,7 @@ try {
     await page.click('#setBtn');
     const logText = await page.textContent('#pressLog');
     check('Settings shows the press log, newest press first', logText.split('\n')[0].endsWith(first.name), logText.split('\n')[0]);
-    check('the log says what the phone was doing and what was sent', /phone: “spotify:track:OtherMusic|phone: .*paused/.test(logText) && /play again, as part of its album → OK/.test(logText) && /gave up/.test(logText), logText.slice(0, 600));
+    check('the log says what the phone was doing and what was sent', /phone: “spotify:track:OtherMusic|phone: .*paused/.test(logText) && /song on its own → OK/.test(logText) && /gave up/.test(logText), logText.slice(0, 600));
     check('the log says whether the phone is still in the device list', /device list: Test iPhone/.test(logText));
     await page.screenshot({ path: path.join(OUT, '10-press-log.png'), fullPage: true });
     await page.click('#setClose');
