@@ -45,7 +45,10 @@ export function resolveSilent() {
 export async function idle() {
   if (!state.ka.on) return false;
   if (!state.ka.uri && !(await resolveSilent())) return false;
-  const r = await send('silent track', () => spotify.play(state.ka.uri));
+  // Album form for the same reason as the clips: the single-song form leaves an iPhone stuck.
+  const album = await albumUri(state.ka.uri);
+  const r = album ? await send('silent track, as part of its album', () => spotify.playInAlbum(album, state.ka.uri, 0))
+    : await send('silent track', () => spotify.play(state.ka.uri));
   if (!r.ok) return false;
   spotify.repeatTrack();
   return true;
@@ -110,25 +113,26 @@ async function send(what, command) {
  * form is the second try. Album ids are looked up once per song and kept in memory.
  */
 const albumOf = new Map();
-async function albumUri(c) {
-  if (!albumOf.has(c.uri)) {
-    const t = await spotify.track(c.uri.split(':').pop());
+async function albumUri(uri) {
+  if (!albumOf.has(uri)) {
+    const t = await spotify.track(uri.split(':').pop());
     if (!t.ok) return null;  // try again next time
-    albumOf.set(c.uri, t.json?.album?.uri || null);
+    albumOf.set(uri, t.json?.album?.uri || null);
   }
-  return albumOf.get(c.uri);
+  return albumOf.get(uri);
 }
 
 /** Looks up the albums of all buttons in the background, so the first press doesn't wait for it. */
 export async function prefetchAlbums() {
   for (const c of state.clips.filter(x => x.uri && !albumOf.has(x.uri))) {
     if (!state.tok) return;
-    await albumUri(c);
+    await albumUri(c.uri);
   }
+  if (state.ka.uri) await albumUri(state.ka.uri);
 }
 
 async function playSong(c, { album, ...opts }) {
-  const albumId = album && await albumUri(c);
+  const albumId = album && await albumUri(c.uri);
   if (albumId) return send('play from ' + fmtShort(c.start) + ', as part of its album', () => spotify.playInAlbum(albumId, c.uri, c.start, opts));
   return send('play from ' + fmtShort(c.start) + (album ? '' : ', song on its own'), () => spotify.play(c.uri, c.start, opts));
 }

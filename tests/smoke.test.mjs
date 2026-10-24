@@ -43,7 +43,7 @@ try {
     check('now-playing bar shows the name', (await page.textContent('#nowT')) === first.name);
     await page.click('#stopBtn');
     await page.waitForTimeout(300);
-    check('STOP switches to the silent track (keep-awake)', lastPlay(calls)?.song === SILENT.uri);
+    check('STOP switches to the silent track (keep-awake), as part of its album', lastPlay(calls)?.song === SILENT.uri && !!lastPlay(calls)?.body.context_uri);
     check('silent track set to repeat', calls.some(c => c.path === '/me/player/repeat'));
     check('nothing marked playing after STOP', await page.locator('.pad.playing').count() === 0);
   }
